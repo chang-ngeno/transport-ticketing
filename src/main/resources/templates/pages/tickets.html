@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/head :: head('Tickets')}"></head>
+<body>
+<div th:replace="~{fragments/nav :: nav}"></div>
+
+<main class="page">
+  <div class="wrapper">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:2rem;">
+      <div>
+        <div style="font-family:var(--font-mono);font-size:0.7rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);margin-bottom:0.4rem;">Bookings</div>
+        <h1>Tickets</h1>
+      </div>
+      <a th:href="@{/tickets/book}" class="btn btn-primary">+ New Booking</a>
+    </div>
+
+    <!-- Filter bar -->
+    <form th:action="@{/tickets}" method="get" style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-bottom:1.5rem;">
+      <input class="form-control" type="text" name="search" placeholder="Search ticket ID or phone…"
+             th:value="${search}" style="max-width:280px;"/>
+      <select class="form-control" name="status" style="max-width:160px;">
+        <option value="">All statuses</option>
+        <option value="PAID"    th:selected="${status == 'PAID'}">Paid</option>
+        <option value="PENDING" th:selected="${status == 'PENDING'}">Pending</option>
+        <option value="FAILED"  th:selected="${status == 'FAILED'}">Failed</option>
+      </select>
+      <button type="submit" class="btn btn-ghost">Filter</button>
+    </form>
+
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Ticket ID</th>
+              <th>Phone</th>
+              <th>Trip</th>
+              <th>Amount</th>
+              <th>Status</th>
+              <th>Booked At</th>
+            </tr>
+          </thead>
+          <tbody th:if="${not #lists.isEmpty(bookings)}">
+            <tr th:each="b : ${bookings}">
+              <td><span class="mono" style="color:var(--accent);" th:text="${b.ticketId}">–</span></td>
+              <td class="mono" style="font-size:0.8rem;" th:text="${b.phoneNumber}">–</td>
+              <td style="font-size:0.8rem;" th:text="${b.tripSummary ?: '–'}">–</td>
+              <td class="mono" th:text="'KES ' + ${#numbers.formatDecimal(b.pricePaid,1,'COMMA',0,'POINT')}">–</td>
+              <td><span th:class="'badge badge-' + ${b.status.toLowerCase()}" th:text="${b.status}">–</span></td>
+              <td class="mono" style="font-size:0.75rem;" th:text="${#temporals.format(b.createdAt,'dd MMM HH:mm')}">–</td>
+            </tr>
+          </tbody>
+          <tbody th:if="${#lists.isEmpty(bookings)}">
+            <tr><td colspan="6" style="text-align:center;padding:3rem;color:var(--text-muted);">No bookings found</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script th:src="@{/js/app.js}"></script>
+</body>
+</html>

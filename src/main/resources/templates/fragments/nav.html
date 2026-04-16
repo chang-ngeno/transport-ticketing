@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<body>
+
+<div th:fragment="nav">
+  <!-- Offline bar -->
+  <div class="offline-bar">⚡ You are offline – some features may be unavailable</div>
+
+  <!-- Top nav -->
+  <nav class="topnav">
+    <div class="wrapper">
+      <a th:href="@{/dashboard}" class="topnav-brand">Transit<span>Pass</span></a>
+
+      <div class="topnav-links">
+        <a th:href="@{/dashboard}">Dashboard</a>
+        <a th:href="@{/trips}" sec:authorize="isAuthenticated()">Trips</a>
+        <a th:href="@{/tickets}" sec:authorize="isAuthenticated()">Tickets</a>
+        <a th:href="@{/tickets/book}" sec:authorize="isAuthenticated()">+ Book</a>
+        <a th:href="@{/admin/tenants}" sec:authorize="hasRole('SUPER_ADMIN')">Tenants</a>
+        <a th:href="@{/admin/users}" sec:authorize="hasRole('SUPER_ADMIN')">Admin Users</a>
+        <a th:href="@{/stages}" sec:authorize="hasAnyRole('TENANT_ADMIN','SUPER_ADMIN')">Stages</a>
+        <a th:href="@{/tenant/users}" sec:authorize="hasAnyRole('TENANT_ADMIN','SUPER_ADMIN')">Users</a>
+        <a th:href="@{/vehicles}" sec:authorize="hasAnyRole('STAGE_HEAD','TENANT_ADMIN','SUPER_ADMIN')">Vehicles</a>
+      </div>
+
+      <div class="topnav-right">
+        <span class="topnav-role" sec:authorize="isAuthenticated()"
+              th:text="${#authentication?.principal?.role}">ROLE</span>
+        <a th:href="@{/logout}" class="btn btn-ghost btn-sm" sec:authorize="isAuthenticated()">Sign out</a>
+        <a th:href="@{/login}" class="btn btn-outline btn-sm" sec:authorize="!isAuthenticated()">Sign in</a>
+      </div>
+
+      <button class="topnav-burger" onclick="openSidebar()" aria-label="Menu">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Mobile sidebar -->
+  <div id="sidebar-overlay" class="sidebar-overlay" onclick="closeSidebar()"></div>
+  <div id="sidebar" class="sidebar">
+    <a th:href="@{/dashboard}" onclick="closeSidebar()">
+      <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Dashboard
+    </a>
+    <a th:href="@{/trips}" onclick="closeSidebar()">
+      <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      Trips
+    </a>
+    <a th:href="@{/tickets}" onclick="closeSidebar()">
+      <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v2z"/></svg>
+      Tickets
+    </a>
+    <a th:href="@{/tickets/book}" onclick="closeSidebar()">
+      <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+      Book Ticket
+    </a>
+    <a th:href="@{/vehicles}" sec:authorize="hasAnyRole('STAGE_HEAD','TENANT_ADMIN','SUPER_ADMIN')" onclick="closeSidebar()">
+      <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+      Vehicles
+    </a>
+    <a th:href="@{/logout}" style="margin-top:auto;color:var(--danger);" onclick="closeSidebar()">
+      <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Sign Out
+    </a>
+  </div>
+
+  <!-- PWA Install Banner -->
+  <div id="install-banner" class="install-banner">
+    <p><strong>Install TransitPass</strong> – add to your home screen for the best experience.</p>
+    <button class="btn btn-primary btn-sm" onclick="installPWA()">Install</button>
+    <button class="btn btn-ghost btn-sm" onclick="dismissInstall()">Later</button>
+  </div>
+</div>
+
+</body>
+</html>

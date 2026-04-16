@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments/head :: head('Trips')}"></head>
+<body>
+<div th:replace="~{fragments/nav :: nav}"></div>
+
+<main class="page">
+  <div class="wrapper">
+
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:2rem;">
+      <div>
+        <div style="font-family:var(--font-mono);font-size:0.7rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);margin-bottom:0.4rem;">Schedules</div>
+        <h1>Trips</h1>
+      </div>
+      <button class="btn btn-primary" onclick="openModal('create-trip-modal')"
+              sec:authorize="hasAnyRole('TENANT_ADMIN','SUPER_ADMIN')">+ New Trip</button>
+    </div>
+
+    <div id="flash" class="alert" style="display:none;"></div>
+    <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+    <div th:if="${error}"   class="alert alert-error"   th:text="${error}"></div>
+
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Departure</th>
+              <th>From</th>
+              <th>To</th>
+              <th>Route</th>
+              <th>Seats</th>
+              <th>Base Price</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody th:if="${not #lists.isEmpty(trips)}">
+            <tr th:each="t : ${trips}">
+              <td class="mono" th:text="${#temporals.format(t.departureTime,'dd MMM yyyy HH:mm')}">–</td>
+              <td th:text="${t.fromStageName ?: '–'}">–</td>
+              <td th:text="${t.toDestination ?: '–'}">–</td>
+              <td th:text="${t.route ?: '–'}">–</td>
+              <td>
+                <span th:text="${t.totalSeats - t.bookedSeats}">0</span>
+                <span style="color:var(--text-muted);font-size:0.75rem;" th:text="'/' + ${t.totalSeats}"> /0</span>
+              </td>
+              <td class="mono" th:text="'KES ' + ${#numbers.formatDecimal(t.pricePerSeat,1,'COMMA',0,'POINT')}">–</td>
+              <td style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                <a th:href="@{/tickets/book(tripId=${t.id})}" class="btn btn-outline btn-sm">Book</a>
+                <a th:href="@{/tenant/trips/{id}/fares(id=${t.id})}"
+                   class="btn btn-ghost btn-sm"
+                   sec:authorize="hasAnyRole('STAGE_HEAD','TENANT_ADMIN','SUPER_ADMIN')">Fares</a>
+              </td>
+            </tr>
+          </tbody>
+          <tbody th:if="${#lists.isEmpty(trips)}">
+            <tr><td colspan="7" style="text-align:center;padding:3rem;color:var(--text-muted);">No trips found</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- Create Trip Modal -->
+<div id="create-trip-modal" class="modal-backdrop" sec:authorize="hasAnyRole('TENANT_ADMIN','SUPER_ADMIN')">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>New Trip</h2>
+      <button class="modal-close" onclick="closeModal('create-trip-modal')">✕</button>
+    </div>
+    <form th:action="@{/tenant/trips}" method="post">
+      <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+      <div class="form-group">
+        <label class="form-label">From Stage</label>
+        <select class="form-control" name="fromStageId" required>
+          <option value="">Select stage…</option>
+          <option th:each="s : ${stages}" th:value="${s.id}" th:text="${s.name}">Stage</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Destination</label>
+        <input class="form-control" type="text" name="toDestination" placeholder="e.g. Nairobi CBD" required/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Route</label>
+        <input class="form-control" type="text" name="route" placeholder="e.g. via Thika Rd"/>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+        <div class="form-group">
+          <label class="form-label">Departure Time</label>
+          <input class="form-control" type="datetime-local" name="departureTime" required/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Total Seats</label>
+          <input class="form-control" type="number" name="totalSeats" min="1" placeholder="14" required/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Base Price (KES)</label>
+        <input class="form-control" type="number" name="basePrice" step="0.01" placeholder="150.00" required/>
+      </div>
+      <div style="display:flex;gap:0.75rem;justify-content:flex-end;">
+        <button type="button" class="btn btn-ghost" onclick="closeModal('create-trip-modal')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Create Trip</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script th:src="@{/js/app.js}"></script>
+</body>
+</html>

@@ -1,0 +1,121 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=IBM+Plex+Mono:wght@400;500;600&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-display: 'Playfair Display';
+  --font-mono:    'IBM Plex Mono';
+  --font-body:    'DM Sans';
+}
+
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+  html  { scroll-behavior: smooth; }
+  body  {
+    background: #0b1120;
+    color: #e8eaf0;
+    font-family: var(--font-body), sans-serif;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+  ::selection { background: rgba(240,165,0,0.2); }
+  ::-webkit-scrollbar       { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: #111827; }
+  ::-webkit-scrollbar-thumb { background: #1e2d47; border-radius: 3px; }
+}
+
+/* ── Grid texture background ── */
+.bg-grid {
+  background-image:
+    repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(240,165,0,0.025) 40px),
+    repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(240,165,0,0.025) 40px);
+}
+
+/* ── Skeleton shimmer ── */
+.skeleton {
+  background: linear-gradient(90deg, #151f32 25%, #1e2d47 50%, #151f32 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s infinite;
+  border-radius: 3px;
+}
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@layer components {
+  /* ── Buttons ── */
+  .btn {
+    @apply inline-flex items-center gap-2 px-4 py-2 rounded
+           font-mono text-sm font-medium tracking-wide
+           transition-all duration-150 whitespace-nowrap
+           disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+  .btn-primary { @apply bg-amber text-ink hover:bg-amber-light active:scale-[0.98]; }
+  .btn-outline { @apply border border-amber text-amber hover:bg-amber hover:text-ink; }
+  .btn-ghost   { @apply border border-border text-muted hover:text-text hover:border-muted/60; }
+  .btn-danger  { @apply bg-red-600 text-white hover:bg-red-500; }
+  .btn-success { @apply bg-green-600 text-white hover:bg-green-500; }
+  .btn-sm      { @apply px-3 py-1.5 text-xs; }
+  .btn-lg      { @apply px-6 py-3 text-base; }
+
+  /* ── Inputs ── */
+  .input {
+    @apply w-full bg-panel border border-border rounded
+           px-3.5 py-2.5 text-sm text-text placeholder:text-muted
+           focus:outline-none focus:border-amber
+           transition-colors duration-150;
+  }
+  .input-error { @apply border-red-500 focus:border-red-400; }
+  .label       { @apply block font-mono text-[10px] tracking-widest uppercase text-muted mb-1.5; }
+
+  /* ── Cards ── */
+  .card        { @apply bg-slate border border-border rounded; }
+  .card-header { @apply flex items-center justify-between px-5 py-4 border-b border-border; }
+  .card-title  { @apply font-mono text-[10px] tracking-widest uppercase text-muted; }
+  .card-body   { @apply p-5; }
+
+  /* ── Panel ── */
+  .panel { @apply bg-panel border border-border rounded p-5; }
+
+  /* ── Badge ── */
+  .badge { @apply inline-block px-2.5 py-0.5 rounded-full font-mono text-[10px] tracking-wide font-medium uppercase border; }
+
+  /* ── Data table ── */
+  .data-table th {
+    @apply font-mono text-[10px] tracking-widest uppercase text-muted
+           px-4 py-3 text-left border-b border-border whitespace-nowrap;
+  }
+  .data-table td {
+    @apply px-4 py-3.5 text-sm border-b border-border/50 align-middle;
+  }
+  .data-table tr:last-child td { @apply border-b-0; }
+  .data-table tbody tr { @apply transition-colors hover:bg-panel/60; }
+
+  /* ── Stat accent line ── */
+  .stat-amber::before { content:''; @apply absolute top-0 left-0 right-0 h-0.5 bg-amber; }
+  .stat-green::before { content:''; @apply absolute top-0 left-0 right-0 h-0.5 bg-green-500; }
+  .stat-red::before   { content:''; @apply absolute top-0 left-0 right-0 h-0.5 bg-red-500; }
+  .stat-sky::before   { content:''; @apply absolute top-0 left-0 right-0 h-0.5 bg-sky-400; }
+  .stat-muted::before { content:''; @apply absolute top-0 left-0 right-0 h-0.5 bg-border; }
+
+  /* ── Modal ── */
+  .modal-backdrop {
+    @apply fixed inset-0 bg-black/70 backdrop-blur-sm z-50
+           flex items-center justify-center p-4;
+  }
+  .modal {
+    @apply bg-slate border border-border rounded w-full
+           max-h-[90vh] overflow-y-auto;
+    animation: scaleIn 0.2s ease;
+  }
+  @keyframes scaleIn {
+    from { opacity: 0; transform: scale(0.96); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+  .modal-header { @apply flex items-start justify-between p-6 border-b border-border; }
+  .modal-body   { @apply p-6 space-y-4; }
+  .modal-footer { @apply flex justify-end gap-3 px-6 pb-6; }
+}

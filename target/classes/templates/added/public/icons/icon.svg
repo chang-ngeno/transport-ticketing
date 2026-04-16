@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="80" fill="#0b1120"/>
+  <rect x="0" y="0" width="512" height="6" fill="#f0a500"/>
+  <text x="256" y="340" font-family="Georgia,serif" font-size="320" font-weight="900" fill="#f0a500" text-anchor="middle">T</text>
+  <text x="256" y="440" font-family="monospace" font-size="48" fill="#8895aa" text-anchor="middle" letter-spacing="8">TRANSITPASS</text>
+</svg>

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: layout('Stages — TransitFlow', ~{::body-content})}">
+</head>
+<body>
+<th:block th:fragment="body-content">
+
+<div class="page-header">
+  <div class="page-header-left">
+    <h1>Stages</h1>
+    <p>Pickup and departure stage locations</p>
+  </div>
+  <button class="btn btn-primary" onclick="Modal.open('create-stage-modal')">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+    </svg>
+    New Stage
+  </button>
+</div>
+
+<div id="stages-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px">
+  <div style="text-align:center;padding:48px;color:var(--text3)">Loading...</div>
+</div>
+
+<!-- Create Stage Modal -->
+<div class="modal-overlay" id="create-stage-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Create Stage</span>
+      <button class="modal-close" onclick="Modal.close('create-stage-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <form id="create-stage-form" class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Stage Name</label>
+          <input class="form-input" type="text" name="name" placeholder="e.g. Githurai 45" required/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Location Description</label>
+          <input class="form-input" type="text" name="location" placeholder="e.g. Near Total Petrol Station"/>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="Modal.close('create-stage-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="document.getElementById('create-stage-form').requestSubmit()">Create Stage</button>
+    </div>
+  </div>
+</div>
+
+</th:block>
+</body>
+</html>
