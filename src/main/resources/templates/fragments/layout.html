@@ -9,7 +9,7 @@
   <meta name="description" content="TransitFlow – Transport Ticketing Management"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-  <title th:replace="${pageTitle}">TransitFlow</title>
+  <title th:text="${pageTitle}">TransitFlow</title>
   <link rel="manifest" href="/manifest.json"/>
   <link rel="apple-touch-icon" href="/icons/icon-192.png"/>
   <link rel="stylesheet" href="/css/app.css"/>
@@ -114,7 +114,7 @@
         <button class="hamburger" onclick="toggleSidebar()" aria-label="Menu">
           <span></span><span></span><span></span>
         </button>
-        <span class="topbar-title" th:replace="${pageTitle}">Page</span>
+        <span class="topbar-title" th:text="${pageTitle}">Page</span>
       </div>
       <div class="topbar-actions">
         <div style="font-family:var(--font-mono);font-size:11px;color:var(--text3)" id="online-status">● ONLINE</div>

@@ -14,44 +14,30 @@
       <a th:href="@{/tickets/book}" class="btn btn-primary">+ New Booking</a>
     </div>
 
-    <!-- Filter bar -->
-    <form th:action="@{/tickets}" method="get" style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-bottom:1.5rem;">
-      <input class="form-control" type="text" name="search" placeholder="Search ticket ID or phone…"
-             th:value="${search}" style="max-width:280px;"/>
-      <select class="form-control" name="status" style="max-width:160px;">
+    <div id="flash" class="alert" style="display:none;"></div>
+
+    <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-bottom:1.5rem;">
+      <input class="form-control" type="text" id="ticket-search"
+             placeholder="Search ticket ID or phone…" style="max-width:280px;"/>
+      <select class="form-control" id="ticket-status" style="max-width:160px;">
         <option value="">All statuses</option>
-        <option value="PAID"    th:selected="${status == 'PAID'}">Paid</option>
-        <option value="PENDING" th:selected="${status == 'PENDING'}">Pending</option>
-        <option value="FAILED"  th:selected="${status == 'FAILED'}">Failed</option>
+        <option value="PAID">Paid</option>
+        <option value="PENDING">Pending</option>
+        <option value="FAILED">Failed</option>
       </select>
-      <button type="submit" class="btn btn-ghost">Filter</button>
-    </form>
+    </div>
 
     <div class="card">
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>Ticket ID</th>
-              <th>Phone</th>
-              <th>Trip</th>
-              <th>Amount</th>
-              <th>Status</th>
-              <th>Booked At</th>
+              <th>Ticket ID</th><th>Phone</th><th>Trip #</th>
+              <th>Amount</th><th>Status</th><th>Booked At</th>
             </tr>
           </thead>
-          <tbody th:if="${not #lists.isEmpty(bookings)}">
-            <tr th:each="b : ${bookings}">
-              <td><span class="mono" style="color:var(--accent);" th:text="${b.ticketId}">–</span></td>
-              <td class="mono" style="font-size:0.8rem;" th:text="${b.phoneNumber}">–</td>
-              <td style="font-size:0.8rem;" th:text="${b.tripSummary ?: '–'}">–</td>
-              <td class="mono" th:text="'KES ' + ${#numbers.formatDecimal(b.pricePaid,1,'COMMA',0,'POINT')}">–</td>
-              <td><span th:class="'badge badge-' + ${b.status.toLowerCase()}" th:text="${b.status}">–</span></td>
-              <td class="mono" style="font-size:0.75rem;" th:text="${#temporals.format(b.createdAt,'dd MMM HH:mm')}">–</td>
-            </tr>
-          </tbody>
-          <tbody th:if="${#lists.isEmpty(bookings)}">
-            <tr><td colspan="6" style="text-align:center;padding:3rem;color:var(--text-muted);">No bookings found</td></tr>
+          <tbody id="tickets-tbody">
+            <tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--text-muted);">Loading…</td></tr>
           </tbody>
         </table>
       </div>

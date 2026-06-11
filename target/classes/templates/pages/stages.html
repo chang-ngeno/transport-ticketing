@@ -1,53 +1,76 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/layout :: layout('Stages — TransitFlow', ~{::body-content})}">
-</head>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments/head :: head('Stages')}"></head>
 <body>
-<th:block th:fragment="body-content">
+<div th:replace="~{fragments/nav :: nav}"></div>
 
-<div class="page-header">
-  <div class="page-header-left">
-    <h1>Stages</h1>
-    <p>Pickup and departure stage locations</p>
+<main class="page">
+  <div class="wrapper">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:2rem;">
+      <div>
+        <div style="font-family:var(--font-mono);font-size:0.7rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);margin-bottom:0.4rem;">Operations</div>
+        <h1>Stages</h1>
+      </div>
+      <button class="btn btn-primary" onclick="openModal('create-stage-modal')"
+              sec:authorize="hasAnyRole('TENANT_ADMIN','SUPER_ADMIN')">+ New Stage</button>
+    </div>
+
+    <div id="flash" class="alert" style="display:none;"></div>
+
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Name</th><th>Location</th><th>ID</th></tr>
+          </thead>
+          <tbody id="stages-tbody">
+            <tr><td colspan="3" style="text-align:center;padding:2rem;color:var(--text-muted);">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
-  <button class="btn btn-primary" onclick="Modal.open('create-stage-modal')">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-    </svg>
-    New Stage
-  </button>
-</div>
+</main>
 
-<div id="stages-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px">
-  <div style="text-align:center;padding:48px;color:var(--text3)">Loading...</div>
-</div>
-
-<!-- Create Stage Modal -->
-<div class="modal-overlay" id="create-stage-modal">
+<div id="create-stage-modal" class="modal-backdrop"
+     sec:authorize="hasAnyRole('TENANT_ADMIN','SUPER_ADMIN')">
   <div class="modal">
     <div class="modal-header">
-      <span class="modal-title">Create Stage</span>
-      <button class="modal-close" onclick="Modal.close('create-stage-modal')">×</button>
+      <h2>New Stage</h2>
+      <button class="modal-close" onclick="closeModal('create-stage-modal')">✕</button>
     </div>
-    <div class="modal-body">
-      <form id="create-stage-form" class="form-grid">
-        <div class="form-group">
-          <label class="form-label">Stage Name</label>
-          <input class="form-input" type="text" name="name" placeholder="e.g. Githurai 45" required/>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Location Description</label>
-          <input class="form-input" type="text" name="location" placeholder="e.g. Near Total Petrol Station"/>
-        </div>
-      </form>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="Modal.close('create-stage-modal')">Cancel</button>
-      <button class="btn btn-primary" onclick="document.getElementById('create-stage-form').requestSubmit()">Create Stage</button>
-    </div>
+    <form id="create-stage-form">
+      <div class="form-group" sec:authorize="hasRole('SUPER_ADMIN')">
+        <label class="form-label">Tenant</label>
+        <select class="form-control" name="tenantId" id="stage-tenant-select">
+          <option value="">Loading…</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Stage Name</label>
+        <input class="form-control" type="text" name="name" placeholder="e.g. Githurai 45" required/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Location</label>
+        <input class="form-control" type="text" name="location" placeholder="e.g. Near Total Petrol Station"/>
+      </div>
+      <div style="display:flex;gap:0.75rem;justify-content:flex-end;">
+        <button type="button" class="btn btn-ghost" onclick="closeModal('create-stage-modal')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Create Stage</button>
+      </div>
+    </form>
   </div>
 </div>
 
-</th:block>
+<script th:src="@{/js/app.js}"></script>
+<script sec:authorize="hasRole('SUPER_ADMIN')">
+  api('GET', '/admin/tenants').then(tenants => {
+    const sel = document.getElementById('stage-tenant-select');
+    if (sel && Array.isArray(tenants))
+      sel.innerHTML = '<option value="">Select tenant…</option>' +
+        tenants.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+  });
+</script>
 </body>
 </html>

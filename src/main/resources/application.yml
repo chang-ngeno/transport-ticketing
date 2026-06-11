@@ -21,6 +21,13 @@ spring:
     prefix: classpath:/templates/
     suffix: .html
     cache: false
+  devtools:
+    restart:
+      enabled: ${DEVTOOLS_ENABLED:false}
+      additional-paths: src/main/java
+      exclude: static/**,templates/**
+    livereload:
+      enabled: ${DEVTOOLS_ENABLED:false}
   web:
     resources:
       static-locations: classpath:/static/
@@ -49,4 +56,4 @@ mpesa:
 
 superadmin:
   username: ${SUPERADMIN_USERNAME:superadmin}
-  password: ${SUPERADMIN_PASSWORD:}
+  password: ${SUPERADMIN_PASSWORD:superadmin123}

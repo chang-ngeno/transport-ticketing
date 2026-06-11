@@ -1,7 +1,7 @@
 # Transport Ticketing System
 
 **Version**: 4.0.0  
-**Stack**: Java 21 + Spring Boot 3.3.4 + TimescaleDB (PostgreSQL)
+**Stack**: Java 22 + Spring Boot 3.3.4 + TimescaleDB (PostgreSQL)
 
 ## Features
 - Multi-tenant architecture with per-tenant encrypted M-PESA credentials
@@ -36,7 +36,7 @@ src/main/resources/
 ```
 
 ## Prerequisites
-- Java 21
+- Java 22
 - PostgreSQL with TimescaleDB extension
 - Maven 3.9+
 
@@ -48,11 +48,20 @@ src/main/resources/
    \c ticketdb
    CREATE EXTENSION IF NOT EXISTS timescaledb;
    ```
-3. Run:
-   ```bash
-   export $(cat .env | xargs)
-   mvn clean spring-boot:run -Dspring-boot.run.jvmArguments="--enable-preview"
+3. Run the startup script:
+
+   **Windows (PowerShell)**
+   ```powershell
+   .\start.ps1
    ```
+
+   **Linux / macOS (Bash)**
+   ```bash
+   chmod +x start.sh
+   ./start.sh
+   ```
+
+   Both scripts load `.env` into the current process environment before invoking Maven, so no manual `export` step is needed.
 
 ## API Quick Reference
 

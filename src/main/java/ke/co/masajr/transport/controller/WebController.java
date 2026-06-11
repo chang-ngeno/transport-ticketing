@@ -3,14 +3,13 @@ package ke.co.masajr.transport.controller;
 import ke.co.masajr.transport.entity.AppUser;
 import ke.co.masajr.transport.entity.BookingEntity;
 import ke.co.masajr.transport.entity.Trip;
-import ke.co.masajr.transport.repository.BookingRepository;
-import ke.co.masajr.transport.repository.TripRepository;
-import ke.co.masajr.transport.repository.VehicleRepository;
+import ke.co.masajr.transport.repository.*;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -21,123 +20,170 @@ import java.util.Map;
 public class WebController {
 
     private final BookingRepository bookingRepository;
+    private final StageRepository stageRepository;
     private final TripRepository tripRepository;
     private final VehicleRepository vehicleRepository;
+    private final AppUserRepository userRepository;
+    private final TenantRepository tenantRepository;
+    private final FareRepository fareRepository;
 
     public WebController(BookingRepository bookingRepository,
+                         StageRepository stageRepository,
                          TripRepository tripRepository,
-                         VehicleRepository vehicleRepository) {
+                         VehicleRepository vehicleRepository,
+                         AppUserRepository userRepository,
+                         TenantRepository tenantRepository,
+                         FareRepository fareRepository) {
         this.bookingRepository = bookingRepository;
+        this.stageRepository = stageRepository;
         this.tripRepository = tripRepository;
         this.vehicleRepository = vehicleRepository;
+        this.userRepository = userRepository;
+        this.tenantRepository = tenantRepository;
+        this.fareRepository = fareRepository;
+    }
+
+    private AppUser currentUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return (auth != null && auth.getPrincipal() instanceof AppUser u) ? u : null;
     }
 
     @GetMapping("/")
     public String index() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        boolean loggedIn = auth != null && auth.isAuthenticated() &&
-                (auth.getPrincipal() != "anonymousUser");
-        return loggedIn ? "redirect:/dashboard" : "redirect:/login";
+        return "pages/landing";
     }
 
     @GetMapping("/login")
     public String login() { return "pages/login"; }
 
-    // Serve favicon by redirecting to our SVG app icon
     @GetMapping("/favicon.ico")
     public String favicon() { return "redirect:/icons/icon-192.png.svg"; }
 
+    @GetMapping("/offline")
+    public String offline() { return "pages/offline"; }
+
     @GetMapping("/dashboard")
     public String dashboard(Model model) {
-        // Determine scope from authenticated principal
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        Long tenantId = null;
-        Long stageId = null;
-        if (auth != null && auth.isAuthenticated() && auth.getPrincipal() instanceof AppUser user) {
-            tenantId = user.getTenantId();
-            stageId = user.getStageId();
-        }
-
-        // Build stats map with safe defaults and scoping
-        long total;
-        long paid;
-        long pending;
-        long failed;
-        long activeTrips;
-        long activeVehicles;
-
+        AppUser user = currentUser();
+        Long tenantId = user != null ? user.getTenantId() : null;
+        Long stageId  = user != null ? user.getStageId()  : null;
         LocalDateTime now = LocalDateTime.now();
 
+        long total, paid, pending, failed, activeTrips;
         if (tenantId != null) {
-            total = bookingRepository.countByTenantId(tenantId);
-            paid = bookingRepository.countByTenantIdAndStatus(tenantId, "PAID");
-            pending = bookingRepository.countByTenantIdAndStatus(tenantId, "PENDING");
-            failed = bookingRepository.countByTenantIdAndStatus(tenantId, "FAILED");
+            total       = bookingRepository.countByTenantId(tenantId);
+            paid        = bookingRepository.countByTenantIdAndStatus(tenantId, "PAID");
+            pending     = bookingRepository.countByTenantIdAndStatus(tenantId, "PENDING");
+            failed      = bookingRepository.countByTenantIdAndStatus(tenantId, "FAILED");
             activeTrips = tripRepository.countByTenantIdAndDepartureTimeAfter(tenantId, now);
         } else {
-            total = bookingRepository.count();
-            paid = bookingRepository.countByStatus("PAID");
-            pending = bookingRepository.countByStatus("PENDING");
-            failed = bookingRepository.countByStatus("FAILED");
+            total       = bookingRepository.count();
+            paid        = bookingRepository.countByStatus("PAID");
+            pending     = bookingRepository.countByStatus("PENDING");
+            failed      = bookingRepository.countByStatus("FAILED");
             activeTrips = tripRepository.countByDepartureTimeAfter(now);
         }
 
-        // Vehicles: prefer stage-scoped count if available; fallback to global active
-        if (stageId != null) {
-            activeVehicles = vehicleRepository.countByStageIdAndIsActive(stageId, true);
-        } else {
-            activeVehicles = vehicleRepository.countByIsActive(true);
-        }
+        long activeVehicles = stageId != null
+                ? vehicleRepository.countByStageIdAndIsActive(stageId, true)
+                : vehicleRepository.countByIsActive(true);
 
         Map<String, Object> stats = new HashMap<>();
-        stats.put("totalBookings", total);
-        stats.put("paidBookings", paid);
+        stats.put("totalBookings",  total);
+        stats.put("paidBookings",   paid);
         stats.put("pendingBookings", pending);
         stats.put("failedBookings", failed);
-        stats.put("activeTrips", activeTrips);
+        stats.put("activeTrips",    activeTrips);
         stats.put("activeVehicles", activeVehicles);
 
-        // Recent items (scoped if tenant available)
-        List<Trip> recentTrips = (tenantId != null)
+        List<Trip> recentTrips = tenantId != null
                 ? tripRepository.findTop10ByTenantIdAndDepartureTimeAfterOrderByDepartureTimeAsc(tenantId, now)
                 : tripRepository.findTop10ByDepartureTimeAfterOrderByDepartureTimeAsc(now);
 
-        List<BookingEntity> recentBookings = (tenantId != null)
+        List<BookingEntity> recentBookings = tenantId != null
                 ? bookingRepository.findTop10ByTenantIdOrderByCreatedAtDesc(tenantId)
                 : bookingRepository.findTop10ByOrderByCreatedAtDesc();
 
         model.addAttribute("stats", stats);
         model.addAttribute("recentTrips", recentTrips);
         model.addAttribute("recentBookings", recentBookings);
-
         return "pages/dashboard";
     }
 
-    @GetMapping("/bookings")
-    public String bookings() { return "pages/bookings"; }
-
-    @GetMapping("/tickets")
-    public String tickets() { return "pages/tickets"; }
-
     @GetMapping("/stages")
-    public String stages() { return "pages/stages"; }
+    public String stages(Model model) {
+        AppUser user = currentUser();
+        Long tenantId = user != null ? user.getTenantId() : null;
+        model.addAttribute("stages", tenantId != null
+                ? stageRepository.findByTenantId(tenantId)
+                : stageRepository.findAll());
+        model.addAttribute("tenants", tenantRepository.findAll());
+        return "pages/stages";
+    }
 
     @GetMapping("/trips")
-    public String trips() { return "pages/trips"; }
-
-    @GetMapping("/fares")
-    public String fares() { return "pages/fares"; }
+    public String trips(Model model) {
+        AppUser user = currentUser();
+        Long tenantId = user != null ? user.getTenantId() : null;
+        model.addAttribute("trips", tenantId != null
+                ? tripRepository.findByTenantId(tenantId)
+                : tripRepository.findAll());
+        model.addAttribute("stages", tenantId != null
+                ? stageRepository.findByTenantId(tenantId)
+                : stageRepository.findAll());
+        model.addAttribute("tenants", tenantRepository.findAll());
+        return "pages/trips";
+    }
 
     @GetMapping("/vehicles")
-    public String vehicles() { return "pages/vehicles"; }
+    public String vehicles(Model model) {
+        AppUser user = currentUser();
+        Long stageId = user != null ? user.getStageId() : null;
+        model.addAttribute("vehicles", stageId != null
+                ? vehicleRepository.findByStageId(stageId)
+                : vehicleRepository.findAll());
+        model.addAttribute("stages", stageId != null ? List.of() : stageRepository.findAll());
+        return "pages/vehicles";
+    }
 
-    @GetMapping("/book")
-    public String book() { return "pages/book"; }
+    @GetMapping("/tickets")
+    public String tickets(Model model,
+                          @RequestParam(required = false) String search,
+                          @RequestParam(required = false) String status) {
+        AppUser user = currentUser();
+        Long tenantId = user != null ? user.getTenantId() : null;
+        List<BookingEntity> all = tenantId != null
+                ? bookingRepository.findByTenantId(tenantId)
+                : bookingRepository.findAll();
 
-    // Preferred route used by templates and manifest shortcuts
-    @GetMapping("/tickets/book")
-    public String bookTicket() { return "pages/book"; }
+        List<BookingEntity> filtered = all.stream()
+                .filter(b -> search == null || search.isBlank()
+                        || b.getTicketId().toLowerCase().contains(search.toLowerCase())
+                        || b.getPhoneNumber().contains(search))
+                .filter(b -> status == null || status.isBlank() || b.getStatus().equals(status))
+                .toList();
 
-    @GetMapping("/offline")
-    public String offline() { return "pages/offline"; }
+        model.addAttribute("bookings", filtered);
+        model.addAttribute("search", search);
+        model.addAttribute("status", status);
+        return "pages/tickets";
+    }
+
+    // /bookings redirects to /tickets (same data, avoid duplication)
+    @GetMapping("/bookings")
+    public String bookings() { return "redirect:/tickets"; }
+
+    @GetMapping({"/book", "/tickets/book"})
+    public String bookTicket(Model model, @RequestParam(required = false) Long tripId) {
+        AppUser user = currentUser();
+        Long tenantId = user != null ? user.getTenantId() : null;
+        model.addAttribute("trips", tenantId != null
+                ? tripRepository.findByTenantId(tenantId)
+                : tripRepository.findAll());
+        model.addAttribute("selectedTripId", tripId);
+        return "pages/book";
+    }
+
+    @GetMapping("/fares")
+    public String fares() { return "redirect:/trips"; }
 }

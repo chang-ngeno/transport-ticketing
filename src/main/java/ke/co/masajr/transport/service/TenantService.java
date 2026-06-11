@@ -85,6 +85,10 @@ public class TenantService {
         return stageRepository.save(stage);
     }
 
+    public List<AppUser> listUsers() {
+        return userRepository.findAll();
+    }
+
     public List<Stage> listStages(Long tenantId) {
         return stageRepository.findByTenantId(tenantId);
     }
@@ -140,6 +144,10 @@ public class TenantService {
         vehicle.setCapacity(capacity);
         vehicle.setIsActive(true);
         return vehicleRepository.save(vehicle);
+    }
+
+    public List<Vehicle> listAllVehicles() {
+        return vehicleRepository.findAll();
     }
 
     public List<Vehicle> listVehicles(Long stageId) {

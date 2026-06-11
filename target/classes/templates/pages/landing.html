@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments/head :: head('TransitPass — Transport Ticketing')}"></head>
+<body>
+
+<!-- ── Nav ─────────────────────────────────────────────────── -->
+<nav style="position:fixed;top:0;left:0;right:0;z-index:100;height:var(--nav-h);
+            background:rgba(10,15,30,0.92);backdrop-filter:blur(12px);
+            border-bottom:1px solid var(--border);display:flex;align-items:center;">
+  <div class="wrapper" style="display:flex;align-items:center;width:100%;">
+    <a href="/" style="font-family:var(--font-head);font-size:1.4rem;font-weight:900;
+                       color:var(--text);letter-spacing:-0.02em;text-decoration:none;flex:1;">
+      Transit<span style="color:var(--accent);">Pass</span>
+    </a>
+    <div style="display:flex;gap:0.75rem;align-items:center;">
+      <sec:authorize access="isAuthenticated()">
+        <a th:href="@{/dashboard}" class="btn btn-primary btn-sm">Dashboard</a>
+      </sec:authorize>
+      <sec:authorize access="!isAuthenticated()">
+        <a th:href="@{/login}" class="btn btn-outline btn-sm">Sign In</a>
+      </sec:authorize>
+    </div>
+  </div>
+</nav>
+
+<!-- ── Hero ─────────────────────────────────────────────────── -->
+<section style="min-height:100vh;display:flex;align-items:center;padding-top:var(--nav-h);
+                position:relative;overflow:hidden;">
+  <!-- grid texture -->
+  <div style="position:absolute;inset:0;pointer-events:none;
+              background:repeating-linear-gradient(0deg,transparent,transparent 39px,rgba(240,165,0,0.03) 40px),
+                         repeating-linear-gradient(90deg,transparent,transparent 39px,rgba(240,165,0,0.03) 40px);"></div>
+  <!-- amber glow -->
+  <div style="position:absolute;top:-20%;left:-10%;width:600px;height:600px;
+              background:radial-gradient(circle,rgba(240,165,0,0.08) 0%,transparent 70%);
+              pointer-events:none;"></div>
+
+  <div class="wrapper" style="position:relative;z-index:1;padding-top:4rem;padding-bottom:4rem;">
+    <div style="max-width:780px;">
+      <div style="font-family:var(--font-mono);font-size:0.7rem;letter-spacing:0.2em;
+                  text-transform:uppercase;color:var(--accent);margin-bottom:1.5rem;">
+        v4.0 · Multi-Tenant · Java 22 · Spring Boot 3.3
+      </div>
+      <h1 style="font-size:clamp(2.8rem,7vw,5rem);font-weight:900;line-height:1.05;
+                 margin-bottom:1.5rem;color:var(--text);">
+        Move people.<br/>
+        <em style="color:var(--accent);font-style:normal;">Track everything.</em>
+      </h1>
+      <p style="font-size:1.15rem;color:var(--text-muted);max-width:560px;
+                line-height:1.75;margin-bottom:2.5rem;">
+        A multi-tenant transport ticketing platform with dynamic pricing,
+        M-PESA STK push payments, real-time seat management, and role-based access
+        for saccos, stages, and attendants.
+      </p>
+      <div style="display:flex;gap:1rem;flex-wrap:wrap;">
+        <sec:authorize access="!isAuthenticated()">
+          <a th:href="@{/login}" class="btn btn-primary btn-lg">Get Started →</a>
+        </sec:authorize>
+        <sec:authorize access="isAuthenticated()">
+          <a th:href="@{/dashboard}" class="btn btn-primary btn-lg">Go to Dashboard →</a>
+        </sec:authorize>
+        <a href="#features" class="btn btn-ghost btn-lg">Learn more</a>
+      </div>
+    </div>
+
+    <!-- floating ticket card -->
+    <div style="position:absolute;right:0;top:50%;transform:translateY(-50%);
+                display:none;" class="hero-card-wrap">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+                  padding:1.5rem;width:280px;position:relative;overflow:hidden;">
+        <div style="position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent);"></div>
+        <div style="font-family:var(--font-mono);font-size:0.6rem;letter-spacing:0.1em;
+                    text-transform:uppercase;color:var(--text-muted);margin-bottom:0.75rem;">Sample Ticket</div>
+        <div style="font-family:var(--font-mono);font-size:1.1rem;color:var(--accent);
+                    letter-spacing:0.08em;margin-bottom:1rem;">TKT-A1B2C3D4</div>
+        <hr style="border:none;border-top:2px dashed var(--border);margin:0.75rem 0;"/>
+        <div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:0.5rem;">
+          <span style="color:var(--text-muted);font-family:var(--font-mono);font-size:0.65rem;text-transform:uppercase;">Route</span>
+          <span>Githurai → CBD</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:0.5rem;">
+          <span style="color:var(--text-muted);font-family:var(--font-mono);font-size:0.65rem;text-transform:uppercase;">Amount</span>
+          <span class="mono">KES 150.00</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:0.8rem;">
+          <span style="color:var(--text-muted);font-family:var(--font-mono);font-size:0.65rem;text-transform:uppercase;">Status</span>
+          <span class="badge badge-paid">PAID</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Stats bar ─────────────────────────────────────────────── -->
+<section style="background:var(--surface);border-top:1px solid var(--border);
+                border-bottom:1px solid var(--border);padding:2rem 0;">
+  <div class="wrapper">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:2rem;text-align:center;">
+      <div>
+        <div style="font-family:var(--font-head);font-size:2.2rem;font-weight:900;color:var(--accent);">Multi</div>
+        <div style="font-family:var(--font-mono);font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);margin-top:0.25rem;">Tenant Architecture</div>
+      </div>
+      <div>
+        <div style="font-family:var(--font-head);font-size:2.2rem;font-weight:900;color:var(--text);">AES-256</div>
+        <div style="font-family:var(--font-mono);font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);margin-top:0.25rem;">Credential Encryption</div>
+      </div>
+      <div>
+        <div style="font-family:var(--font-head);font-size:2.2rem;font-weight:900;color:var(--text);">4</div>
+        <div style="font-family:var(--font-mono);font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);margin-top:0.25rem;">Role Levels</div>
+      </div>
+      <div>
+        <div style="font-family:var(--font-head);font-size:2.2rem;font-weight:900;color:var(--text);">Real-time</div>
+        <div style="font-family:var(--font-mono);font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);margin-top:0.25rem;">Seat Management</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Features ──────────────────────────────────────────────── -->
+<section id="features" style="padding:5rem 0;">
+  <div class="wrapper">
+    <div style="margin-bottom:3rem;">
+      <div style="font-family:var(--font-mono);font-size:0.7rem;letter-spacing:0.15em;
+                  text-transform:uppercase;color:var(--accent);margin-bottom:0.75rem;">Platform Features</div>
+      <h2>Everything a sacco needs</h2>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1.5rem;">
+
+      <div class="card" style="position:relative;overflow:hidden;">
+        <div style="position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent);"></div>
+        <div style="font-size:1.5rem;margin-bottom:1rem;">💳</div>
+        <h3 style="margin-bottom:0.5rem;">M-PESA STK Push</h3>
+        <p style="color:var(--text-muted);font-size:0.875rem;line-height:1.7;">
+          Per-tenant Safaricom integration with AES-256 encrypted credentials.
+          STK push and confirmation SMS run in parallel via virtual threads.
+        </p>
+      </div>
+
+      <div class="card" style="position:relative;overflow:hidden;">
+        <div style="position:absolute;top:0;left:0;right:0;height:2px;background:var(--success);"></div>
+        <div style="font-size:1.5rem;margin-bottom:1rem;">📈</div>
+        <h3 style="margin-bottom:0.5rem;">Dynamic Pricing</h3>
+        <p style="color:var(--text-muted);font-size:0.875rem;line-height:1.7;">
+          Fare windows keyed to <span class="mono" style="font-size:0.8rem;">LocalDateTime</span> ranges.
+          Peak-hour, off-peak, or open-ended pricing with automatic fallback to base fare.
+        </p>
+      </div>
+
+      <div class="card" style="position:relative;overflow:hidden;">
+        <div style="position:absolute;top:0;left:0;right:0;height:2px;background:#6366f1;"></div>
+        <div style="font-size:1.5rem;margin-bottom:1rem;">🏢</div>
+        <h3 style="margin-bottom:0.5rem;">Multi-Tenant</h3>
+        <p style="color:var(--text-muted);font-size:0.875rem;line-height:1.7;">
+          Fully isolated tenants — each sacco has its own stages, trips, vehicles,
+          users, and encrypted M-PESA credentials.
+        </p>
+      </div>
+
+      <div class="card" style="position:relative;overflow:hidden;">
+        <div style="position:absolute;top:0;left:0;right:0;height:2px;background:#e05a00;"></div>
+        <div style="font-size:1.5rem;margin-bottom:1rem;">⚡</div>
+        <h3 style="margin-bottom:0.5rem;">Virtual Threads</h3>
+        <p style="color:var(--text-muted);font-size:0.875rem;line-height:1.7;">
+          Java 22 virtual threads + <span class="mono" style="font-size:0.8rem;">StructuredTaskScope</span>
+          for atomic batch bookings. Semaphore-throttled M-PESA concurrency.
+        </p>
+      </div>
+
+      <div class="card" style="position:relative;overflow:hidden;">
+        <div style="position:absolute;top:0;left:0;right:0;height:2px;background:var(--pending);"></div>
+        <div style="font-size:1.5rem;margin-bottom:1rem;">🔐</div>
+        <h3 style="margin-bottom:0.5rem;">Role-Based Access</h3>
+        <p style="color:var(--text-muted);font-size:0.875rem;line-height:1.7;">
+          Four roles: Super Admin, Tenant Admin, Stage Head, Stage Attendant —
+          each with scoped permissions enforced at the API and UI layer.
+        </p>
+      </div>
+
+      <div class="card" style="position:relative;overflow:hidden;">
+        <div style="position:absolute;top:0;left:0;right:0;height:2px;background:var(--success);"></div>
+        <div style="font-size:1.5rem;margin-bottom:1rem;">📱</div>
+        <h3 style="margin-bottom:0.5rem;">Offline PWA</h3>
+        <p style="color:var(--text-muted);font-size:0.875rem;line-height:1.7;">
+          Installable progressive web app with service worker caching, offline fallback,
+          push notification support, and background sync.
+        </p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ── Roles ─────────────────────────────────────────────────── -->
+<section style="padding:5rem 0;background:var(--surface);
+                border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
+  <div class="wrapper">
+    <div style="margin-bottom:3rem;">
+      <div style="font-family:var(--font-mono);font-size:0.7rem;letter-spacing:0.15em;
+                  text-transform:uppercase;color:var(--accent);margin-bottom:0.75rem;">Access Control</div>
+      <h2>Built for every team member</h2>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;">
+
+      <div style="padding:1.5rem;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface2);">
+        <div style="font-family:var(--font-mono);font-size:0.65rem;letter-spacing:0.1em;
+                    text-transform:uppercase;color:var(--accent);margin-bottom:0.75rem;">Super Admin</div>
+        <ul style="list-style:none;display:flex;flex-direction:column;gap:0.4rem;">
+          <li style="font-size:0.85rem;color:var(--text-muted);">✓ Manage all tenants</li>
+          <li style="font-size:0.85rem;color:var(--text-muted);">✓ Create any user</li>
+          <li style="font-size:0.85rem;color:var(--text-muted);">✓ Full system access</li>
+        </ul>
+      </div>
+
+      <div style="padding:1.5rem;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface2);">
+        <div style="font-family:var(--font-mono);font-size:0.65rem;letter-spacing:0.1em;
+                    text-transform:uppercase;color:#6366f1;margin-bottom:0.75rem;">Tenant Admin</div>
+        <ul style="list-style:none;display:flex;flex-direction:column;gap:0.4rem;">
+          <li style="font-size:0.85rem;color:var(--text-muted);">✓ Manage stages &amp; trips</li>
+          <li style="font-size:0.85rem;color:var(--text-muted);">✓ Invite users</li>
+          <li style="font-size:0.85rem;color:var(--text-muted);">✓ Set fare windows</li>
+        </ul>
+      </div>
+
+      <div style="padding:1.5rem;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface2);">
+        <div style="font-family:var(--font-mono);font-size:0.65rem;letter-spacing:0.1em;
+                    text-transform:uppercase;color:#e05a00;margin-bottom:0.75rem;">Stage Head</div>
+        <ul style="list-style:none;display:flex;flex-direction:column;gap:0.4rem;">
+          <li style="font-size:0.85rem;color:var(--text-muted);">✓ Manage vehicles</li>
+          <li style="font-size:0.85rem;color:var(--text-muted);">✓ Set fares</li>
+          <li style="font-size:0.85rem;color:var(--text-muted);">✓ Book tickets</li>
+        </ul>
+      </div>
+
+      <div style="padding:1.5rem;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface2);">
+        <div style="font-family:var(--font-mono);font-size:0.65rem;letter-spacing:0.1em;
+                    text-transform:uppercase;color:var(--text-muted);margin-bottom:0.75rem;">Stage Attendant</div>
+        <ul style="list-style:none;display:flex;flex-direction:column;gap:0.4rem;">
+          <li style="font-size:0.85rem;color:var(--text-muted);">✓ Book tickets</li>
+          <li style="font-size:0.85rem;color:var(--text-muted);">✓ View trips</li>
+          <li style="font-size:0.85rem;color:var(--text-muted);">✓ View vehicles</li>
+        </ul>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ── Tech stack ─────────────────────────────────────────────── -->
+<section style="padding:5rem 0;">
+  <div class="wrapper">
+    <div style="margin-bottom:3rem;">
+      <div style="font-family:var(--font-mono);font-size:0.7rem;letter-spacing:0.15em;
+                  text-transform:uppercase;color:var(--accent);margin-bottom:0.75rem;">Tech Stack</div>
+      <h2>Built on proven foundations</h2>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:0.75rem;">
+      <span style="font-family:var(--font-mono);font-size:0.75rem;padding:0.4rem 0.9rem;
+                   background:var(--surface);border:1px solid var(--border);border-radius:999px;color:var(--text-muted);">Java 22</span>
+      <span style="font-family:var(--font-mono);font-size:0.75rem;padding:0.4rem 0.9rem;
+                   background:var(--surface);border:1px solid var(--border);border-radius:999px;color:var(--text-muted);">Spring Boot 3.3</span>
+      <span style="font-family:var(--font-mono);font-size:0.75rem;padding:0.4rem 0.9rem;
+                   background:var(--surface);border:1px solid var(--border);border-radius:999px;color:var(--text-muted);">TimescaleDB</span>
+      <span style="font-family:var(--font-mono);font-size:0.75rem;padding:0.4rem 0.9rem;
+                   background:var(--surface);border:1px solid var(--border);border-radius:999px;color:var(--text-muted);">Flyway</span>
+      <span style="font-family:var(--font-mono);font-size:0.75rem;padding:0.4rem 0.9rem;
+                   background:var(--surface);border:1px solid var(--border);border-radius:999px;color:var(--text-muted);">Spring Security + JWT</span>
+      <span style="font-family:var(--font-mono);font-size:0.75rem;padding:0.4rem 0.9rem;
+                   background:var(--surface);border:1px solid var(--border);border-radius:999px;color:var(--text-muted);">Resilience4j</span>
+      <span style="font-family:var(--font-mono);font-size:0.75rem;padding:0.4rem 0.9rem;
+                   background:var(--surface);border:1px solid var(--border);border-radius:999px;color:var(--text-muted);">Virtual Threads</span>
+      <span style="font-family:var(--font-mono);font-size:0.75rem;padding:0.4rem 0.9rem;
+                   background:var(--surface);border:1px solid var(--border);border-radius:999px;color:var(--text-muted);">StructuredTaskScope</span>
+      <span style="font-family:var(--font-mono);font-size:0.75rem;padding:0.4rem 0.9rem;
+                   background:var(--surface);border:1px solid var(--border);border-radius:999px;color:var(--text-muted);">Africa's Talking SMS</span>
+      <span style="font-family:var(--font-mono);font-size:0.75rem;padding:0.4rem 0.9rem;
+                   background:var(--surface);border:1px solid var(--border);border-radius:999px;color:var(--text-muted);">Thymeleaf</span>
+      <span style="font-family:var(--font-mono);font-size:0.75rem;padding:0.4rem 0.9rem;
+                   background:var(--surface);border:1px solid var(--border);border-radius:999px;color:var(--text-muted);">PWA / Service Worker</span>
+    </div>
+  </div>
+</section>
+
+<!-- ── CTA ───────────────────────────────────────────────────── -->
+<section style="padding:5rem 0;background:var(--surface);
+                border-top:1px solid var(--border);">
+  <div class="wrapper" style="text-align:center;">
+    <h2 style="margin-bottom:1rem;">Ready to get started?</h2>
+    <p style="color:var(--text-muted);font-size:1rem;margin-bottom:2rem;max-width:480px;margin-left:auto;margin-right:auto;">
+      Sign in with your sacco credentials to access the dashboard, manage trips, and book tickets.
+    </p>
+    <sec:authorize access="!isAuthenticated()">
+      <a th:href="@{/login}" class="btn btn-primary btn-lg">Sign In to TransitPass</a>
+    </sec:authorize>
+    <sec:authorize access="isAuthenticated()">
+      <a th:href="@{/dashboard}" class="btn btn-primary btn-lg">Go to Dashboard →</a>
+    </sec:authorize>
+  </div>
+</section>
+
+<!-- ── Footer ────────────────────────────────────────────────── -->
+<footer style="padding:2rem 0;border-top:1px solid var(--border);">
+  <div class="wrapper" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
+    <span style="font-family:var(--font-head);font-size:1rem;font-weight:900;color:var(--text-muted);">
+      Transit<span style="color:var(--accent);">Pass</span>
+    </span>
+    <span style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-muted);">
+      v4.0.0 · Java 22 · Spring Boot 3.3.4
+    </span>
+  </div>
+</footer>
+
+</body>
+</html>

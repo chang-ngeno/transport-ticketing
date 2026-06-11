@@ -14,7 +14,7 @@
         <div style="font-family:var(--font-mono);font-size:0.7rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);margin-bottom:0.4rem;">
           Overview
         </div>
-        <h1 th:text="${#authentication?.principal?.username} != null ? 'Good day, ' + #authentication.principal.username : 'Good day'">Dashboard</h1>
+        <h1 th:text="${(#authentication != null and #authentication.principal != null and #authentication.principal.username != null) ? 'Good day, ' + #authentication.principal.username : 'Good day'}">Dashboard</h1>
       </div>
       <a th:href="@{/tickets/book}" class="btn btn-primary">+ Book Ticket</a>
     </div>
@@ -75,9 +75,9 @@
             </div>
             <div class="trip-meta">
               <div class="trip-seats mono"
-                   th:text="${(trip.totalSeats - trip.bookedSeats)} + ' seats left'">seats</div>
+                   th:text="${(trip.totalSeats - trip.bookedSeats) + ' seats left'}">seats</div>
               <div class="trip-price"
-                   th:text="'KES ' + ${#numbers.formatDecimal(trip.pricePerSeat,1,'COMMA',0,'POINT')}">KES 0</div>
+                   th:text="${'KES ' + #numbers.formatDecimal(trip.pricePerSeat,1,'COMMA',0,'POINT')}">KES 0</div>
               <a th:href="@{/tickets/book(tripId=${trip.id})}"
                  class="btn btn-outline btn-sm" style="margin-top:0.5rem;">Book</a>
             </div>
@@ -104,8 +104,8 @@
             </div>
             <div style="text-align:right;">
               <div style="font-size:0.85rem;font-weight:500;"
-                   th:text="'KES ' + ${#numbers.formatDecimal(b.pricePaid,1,'COMMA',0,'POINT')}">KES 0</div>
-              <span th:class="'badge badge-' + ${b.status.toLowerCase()}"
+                   th:text="${'KES ' + #numbers.formatDecimal(b.pricePaid,1,'COMMA',0,'POINT')}">KES 0</div>
+              <span th:class="${'badge badge-' + b.status.toLowerCase()}"
                     th:text="${b.status}">PENDING</span>
             </div>
           </div>

@@ -50,6 +50,14 @@ public class TenantController {
         return ResponseEntity.ok(user);
     }
 
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @GetMapping("/admin/users")
+    public ResponseEntity<List<AppUser>> listUsers() {
+        var users = tenantService.listUsers();
+        users.forEach(u -> u.setPassword("[HIDDEN]"));
+        return ResponseEntity.ok(users);
+    }
+
     // ── Stages ────────────────────────────────────────────────────────────────
 
     @PreAuthorize("hasAnyRole('TENANT_ADMIN','SUPER_ADMIN')")
@@ -115,8 +123,10 @@ public class TenantController {
     @PreAuthorize("hasAnyRole('TENANT_ADMIN','SUPER_ADMIN','STAGE_HEAD','STAGE_ATTENDANT')")
     @GetMapping("/stage/vehicles")
     public ResponseEntity<List<Vehicle>> listVehicles(@AuthenticationPrincipal AppUser caller) {
-        if (caller.getStageId() == null) return ResponseEntity.badRequest().build();
-        return ResponseEntity.ok(tenantService.listVehicles(caller.getStageId()));
+        List<Vehicle> vehicles = caller.getStageId() != null
+                ? tenantService.listVehicles(caller.getStageId())
+                : tenantService.listAllVehicles();
+        return ResponseEntity.ok(vehicles);
     }
 
     @PreAuthorize("hasAnyRole('TENANT_ADMIN','SUPER_ADMIN','STAGE_HEAD')")
