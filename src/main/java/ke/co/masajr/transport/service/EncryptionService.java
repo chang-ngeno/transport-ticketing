@@ -4,9 +4,13 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.encrypt.Encryptors;
 import org.springframework.security.crypto.encrypt.TextEncryptor;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class EncryptionService {
+
+    private static final Logger log = LoggerFactory.getLogger(EncryptionService.class);
 
     private final String masterPassword;
 
@@ -25,10 +29,12 @@ public class EncryptionService {
     }
 
     public String encrypt(String plainText, String salt) {
+        log.debug("Encrypting value with salt");
         return plainText == null ? null : getEncryptor(salt).encrypt(plainText);
     }
 
     public String decrypt(String encryptedText, String salt) {
+        log.debug("Decrypting value with salt");
         return encryptedText == null ? null : getEncryptor(salt).decrypt(encryptedText);
     }
 }

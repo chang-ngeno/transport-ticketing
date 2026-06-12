@@ -14,9 +14,14 @@ const Auth = {
 
 // ── API helper ────────────────────────────────────
 async function api(method, path, body) {
+  const token = Auth.getToken();
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
   const res = await fetch('/api' + path, {
     method,
-    headers: Auth.headers(),
+    headers,
+    credentials: 'include',   // send AUTH_TOKEN cookie when no Bearer token in storage
     body: body ? JSON.stringify(body) : undefined
   });
   if (res.status === 401) { Auth.clear(); window.location = '/login'; return; }
