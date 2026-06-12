@@ -186,4 +186,6 @@ public class WebController {
 
     @GetMapping("/fares")
     public String fares() { return "redirect:/trips"; }
+
+    // Note: Admin Users page route is provided by AdminWebController to avoid duplicates
 }

@@ -2,7 +2,8 @@ package ke.co.masajr.transport.service;
 
 import ke.co.masajr.transport.entity.*;
 import ke.co.masajr.transport.repository.*;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,31 +14,42 @@ import java.util.List;
 @Service
 public class TenantService {
 
+    private static final Logger log = LoggerFactory.getLogger(TenantService.class);
+
+    // Keep repositories only for lightweight read usages left (if any)
     private final TenantRepository tenantRepository;
-    private final AppUserRepository userRepository;
     private final StageRepository stageRepository;
     private final TripRepository tripRepository;
-    private final FareRepository fareRepository;
     private final VehicleRepository vehicleRepository;
-    private final EncryptionService encryptionService;
-    private final PasswordEncoder passwordEncoder;
+
+    // New domain services (extracted responsibilities)
+    private final TenantManagementService tenantManagementService;
+    private final UserAccountService userAccountService;
+    private final StageService stageService;
+    private final TripService tripService;
+    private final FareService fareService;
+    private final VehicleService vehicleService;
 
     public TenantService(TenantRepository tenantRepository,
-                         AppUserRepository userRepository,
                          StageRepository stageRepository,
                          TripRepository tripRepository,
-                         FareRepository fareRepository,
                          VehicleRepository vehicleRepository,
-                         EncryptionService encryptionService,
-                         PasswordEncoder passwordEncoder) {
+                         TenantManagementService tenantManagementService,
+                         UserAccountService userAccountService,
+                         StageService stageService,
+                         TripService tripService,
+                         FareService fareService,
+                         VehicleService vehicleService) {
         this.tenantRepository = tenantRepository;
-        this.userRepository = userRepository;
         this.stageRepository = stageRepository;
         this.tripRepository = tripRepository;
-        this.fareRepository = fareRepository;
         this.vehicleRepository = vehicleRepository;
-        this.encryptionService = encryptionService;
-        this.passwordEncoder = passwordEncoder;
+        this.tenantManagementService = tenantManagementService;
+        this.userAccountService = userAccountService;
+        this.stageService = stageService;
+        this.tripService = tripService;
+        this.fareService = fareService;
+        this.vehicleService = vehicleService;
     }
 
     // ── Tenant ────────────────────────────────────────────────────────────────
@@ -46,18 +58,24 @@ public class TenantService {
     public Tenant createTenant(String name, String shortcode,
                                String consumerKey, String consumerSecret, String passkey) {
         String salt = generateSalt();
-        Tenant tenant = new Tenant();
-        tenant.setName(name);
-        tenant.setMpesaShortcode(shortcode);
-        tenant.setMpesaEncryptionSalt(salt);
-        tenant.setMpesaConsumerKeyEncrypted(encryptionService.encrypt(consumerKey, salt));
-        tenant.setMpesaConsumerSecretEncrypted(encryptionService.encrypt(consumerSecret, salt));
-        tenant.setMpesaPasskeyEncrypted(encryptionService.encrypt(passkey, salt));
-        return tenantRepository.save(tenant);
+        return tenantManagementService.createTenant(name, shortcode, consumerKey, consumerSecret, passkey, salt);
     }
 
     public List<Tenant> listTenants() {
-        return tenantRepository.findAll();
+        log.debug("Listing all tenants");
+        return tenantManagementService.listTenants();
+    }
+
+    @Transactional
+    public Tenant updateTenant(Long id, String name, String shortcode) {
+        return tenantManagementService.updateTenant(id, name, shortcode);
+    }
+
+    @Transactional
+    public void deleteTenant(Long id) {
+        log.warn("Deleting tenant id={}", id);
+        tenantManagementService.deleteTenant(id);
+        log.info("Tenant id={} deleted", id);
     }
 
     // ── Users ─────────────────────────────────────────────────────────────────
@@ -65,32 +83,27 @@ public class TenantService {
     @Transactional
     public AppUser createUser(String username, String password, Role role,
                               Long tenantId, Long stageId) {
-        AppUser user = new AppUser();
-        user.setUsername(username);
-        user.setPassword(passwordEncoder.encode(password));
-        user.setRole(role);
-        user.setTenantId(tenantId);
-        user.setStageId(stageId);
-        return userRepository.save(user);
+        return userAccountService.createUser(username, password, role, tenantId, stageId);
     }
 
     // ── Stages ────────────────────────────────────────────────────────────────
 
     @Transactional
     public Stage createStage(Long tenantId, String name, String location) {
-        Stage stage = new Stage();
-        stage.setTenantId(tenantId);
-        stage.setName(name);
-        stage.setLocation(location);
-        return stageRepository.save(stage);
+        return stageService.createStage(tenantId, name, location);
     }
 
     public List<AppUser> listUsers() {
-        return userRepository.findAll();
+        return userAccountService.listUsers();
+    }
+
+    @Transactional
+    public AppUser updateUser(Long id, String username, String password, Long tenantId) {
+        return userAccountService.updateUser(id, username, password, tenantId);
     }
 
     public List<Stage> listStages(Long tenantId) {
-        return stageRepository.findByTenantId(tenantId);
+        return stageService.listStages(tenantId);
     }
 
     // ── Trips ─────────────────────────────────────────────────────────────────
@@ -99,20 +112,11 @@ public class TenantService {
     public Trip createTrip(Long tenantId, Long fromStageId, String toDestination,
                            String route, java.time.LocalDateTime departureTime,
                            int totalSeats, java.math.BigDecimal basePrice) {
-        Trip trip = new Trip();
-        trip.setTenantId(tenantId);
-        trip.setFromStageId(fromStageId);
-        trip.setToDestination(toDestination);
-        trip.setRoute(route);
-        trip.setDepartureTime(departureTime);
-        trip.setTotalSeats(totalSeats);
-        trip.setBookedSeats(0);
-        trip.setPricePerSeat(basePrice);
-        return tripRepository.save(trip);
+        return tripService.createTrip(tenantId, fromStageId, toDestination, route, departureTime, totalSeats, basePrice);
     }
 
     public List<Trip> listTrips(Long tenantId) {
-        return tripRepository.findByTenantId(tenantId);
+        return tripService.listTrips(tenantId);
     }
 
     // ── Fares (Dynamic Pricing) ───────────────────────────────────────────────
@@ -121,45 +125,31 @@ public class TenantService {
     public Fare createFare(Long tripId, java.time.LocalDateTime effectiveFrom,
                            java.time.LocalDateTime effectiveTo,
                            java.math.BigDecimal price, Long createdBy) {
-        Fare fare = new Fare();
-        fare.setTripId(tripId);
-        fare.setEffectiveFrom(effectiveFrom);
-        fare.setEffectiveTo(effectiveTo);
-        fare.setPricePerSeat(price);
-        fare.setCreatedBy(createdBy);
-        return fareRepository.save(fare);
+        return fareService.createFare(tripId, effectiveFrom, effectiveTo, price, createdBy);
     }
 
     public List<Fare> listFares(Long tripId) {
-        return fareRepository.findByTripIdOrderByEffectiveFromDesc(tripId);
+        return fareService.listFares(tripId);
     }
 
     // ── Vehicles ──────────────────────────────────────────────────────────────
 
     @Transactional
     public Vehicle createVehicle(Long stageId, String registrationNumber, int capacity) {
-        Vehicle vehicle = new Vehicle();
-        vehicle.setStageId(stageId);
-        vehicle.setRegistrationNumber(registrationNumber);
-        vehicle.setCapacity(capacity);
-        vehicle.setIsActive(true);
-        return vehicleRepository.save(vehicle);
+        return vehicleService.createVehicle(stageId, registrationNumber, capacity);
     }
 
     public List<Vehicle> listAllVehicles() {
-        return vehicleRepository.findAll();
+        return vehicleService.listAllVehicles();
     }
 
     public List<Vehicle> listVehicles(Long stageId) {
-        return vehicleRepository.findByStageId(stageId);
+        return vehicleService.listVehicles(stageId);
     }
 
     @Transactional
     public Vehicle toggleVehicle(Long vehicleId, boolean active) {
-        Vehicle v = vehicleRepository.findById(vehicleId)
-                .orElseThrow(() -> new RuntimeException("Vehicle not found: " + vehicleId));
-        v.setIsActive(active);
-        return vehicleRepository.save(v);
+        return vehicleService.toggleVehicle(vehicleId, active);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

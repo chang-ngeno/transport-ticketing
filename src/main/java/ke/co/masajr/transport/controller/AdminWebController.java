@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.util.Objects;
+
 @Controller
 public class AdminWebController {
 
@@ -32,7 +34,7 @@ public class AdminWebController {
 
     @GetMapping("/admin/tenants")
     public String tenants(Model model) {
-        model.addAttribute("tenants", tenantRepository.findAll());
+        model.addAttribute("tenants", tenantService.listTenants());
         return "pages/admin/tenants";
     }
 
@@ -53,10 +55,8 @@ public class AdminWebController {
     }
 
     @GetMapping("/admin/users")
-    public String users(Model model) {
-        model.addAttribute("users", userRepository.findAll());
-        model.addAttribute("tenants", tenantRepository.findAll());
-        model.addAttribute("stages", stageRepository.findAll());
+    public String users() {
+        // The page loads its data via JS from REST endpoints (/api/admin/users, /api/admin/tenants)
         return "pages/admin/users";
     }
 

@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import ke.co.masajr.transport.dto.*;
 import ke.co.masajr.transport.entity.*;
 import ke.co.masajr.transport.service.TenantService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @RestController
 @RequestMapping("/api")
 public class TenantController {
@@ -35,7 +37,24 @@ public class TenantController {
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     @GetMapping("/admin/tenants")
     public ResponseEntity<List<Tenant>> listTenants() {
+        log.debug("Listing all tenants");
         return ResponseEntity.ok(tenantService.listTenants());
+    }
+
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PutMapping("/admin/tenants/{id}")
+    public ResponseEntity<Tenant> updateTenant(@PathVariable Long id,
+                                               @RequestBody Map<String, Object> body) {
+        return ResponseEntity.ok(tenantService.updateTenant(id,
+                (String) body.get("name"),
+                (String) body.get("mpesaShortcode")));
+    }
+
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @DeleteMapping("/admin/tenants/{id}")
+    public ResponseEntity<Void> deleteTenant(@PathVariable Long id) {
+        tenantService.deleteTenant(id);
+        return ResponseEntity.noContent().build();
     }
 
     // ── Users ─────────────────────────────────────────────────────────────────
@@ -50,12 +69,35 @@ public class TenantController {
         return ResponseEntity.ok(user);
     }
 
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TENANT_ADMIN')")
+    @GetMapping("/tenants/users")
+    public ResponseEntity<List<AppUser>> listTenantUsers(@AuthenticationPrincipal AppUser caller) {
+        Long tenantId = caller.getRole() == Role.SUPER_ADMIN ? null : caller.getTenantId();
+        var users = tenantService.listUsers().stream()
+                .filter(u -> tenantId == null || tenantId.equals(u.getTenantId()))
+                .toList();
+        users.forEach(u -> u.setPassword("[HIDDEN]"));
+        return ResponseEntity.ok(users);
+    }
+
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TENANT_ADMIN')")
     @GetMapping("/admin/users")
     public ResponseEntity<List<AppUser>> listUsers() {
         var users = tenantService.listUsers();
         users.forEach(u -> u.setPassword("[HIDDEN]"));
         return ResponseEntity.ok(users);
+    }
+
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PutMapping("/admin/users/{id}")
+    public ResponseEntity<AppUser> updateTenantAdmin(@PathVariable Long id,
+                                                     @RequestBody Map<String, Object> body) {
+        AppUser user = tenantService.updateUser(id,
+                (String) body.get("username"),
+                (String) body.get("password"),
+                body.get("tenantId") != null ? Long.parseLong(body.get("tenantId").toString()) : null);
+        user.setPassword("[HIDDEN]");
+        return ResponseEntity.ok(user);
     }
 
     // ── Stages ────────────────────────────────────────────────────────────────
