@@ -1,0 +1,41 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: ticketing_db
+    environment:
+      POSTGRES_DB: ticketing_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ticketing_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  app:
+    build: .
+    container_name: transport-ticketing
+    ports:
+      - "8080:8080"
+    environment:
+      - DATABASE_URL=jdbc:postgresql://db:5432/ticketing_db
+      - DATABASE_USERNAME=postgres
+      - DATABASE_PASSWORD=postgres123
+      - JWT_SECRET=${JWT_SECRET:-fc939aa5b6defdddc9f7de28bd1a6c5f76217e13c1172dc1ebf14c75fe9afb63}
+      - ENCRYPTION_MASTER_PASSWORD=${ENCRYPTION_MASTER_PASSWORD:-76217e13c1172dc1ebf14c75fe9afb63}
+      - SUPERADMIN_PASSWORD=${SUPERADMIN_PASSWORD:-f66dec1c52bc176fc9ab130831a4f5df}
+      - AT_USERNAME=${AT_USERNAME:-sandbox}
+      - AT_API_KEY=${AT_API_KEY:-your-africastalking-key}
+      - MPESA_CALLBACK_URL=${MPESA_CALLBACK_URL:-http://localhost:8080/api/mpesa/callback}
+      - JPA_SHOW_SQL=${JPA_SHOW_SQL:-false}
+      - DEVTOOLS_ENABLED=${DEVTOOLS_ENABLED:-false}
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
