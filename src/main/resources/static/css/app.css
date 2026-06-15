@@ -355,6 +355,7 @@ body.offline .offline-bar { display: block; }
   .login-visual { display: none; }
   .dash-grid { grid-template-columns: 1fr; }
   .topnav-links { display: none; }
+  .topnav-right .btn-sm { display: none; }
   .topnav-burger { display: flex; }
   .trip-card { grid-template-columns: 1fr; gap: 0.75rem; }
   .trip-meta { text-align: left; }
