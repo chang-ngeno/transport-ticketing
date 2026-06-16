@@ -48,17 +48,26 @@ public class JwtFilter extends OncePerRequestFilter {
             }
         }
 
-        if (token != null && jwtUtil.isTokenValid(token)) {
-            String username = jwtUtil.extractUsername(token);
-            String role = jwtUtil.extractRole(token);
+        if (token != null) {
+            if (jwtUtil.isTokenValid(token)) {
+                String username = jwtUtil.extractUsername(token);
+                String role = jwtUtil.extractRole(token);
 
-            userRepository.findByUsername(username).ifPresent(user -> {
-                var auth = new UsernamePasswordAuthenticationToken(
-                        user, null,
-                        List.of(new SimpleGrantedAuthority("ROLE_" + role))
-                );
-                SecurityContextHolder.getContext().setAuthentication(auth);
-            });
+                userRepository.findByUsername(username).ifPresent(user -> {
+                    var auth = new UsernamePasswordAuthenticationToken(
+                            user, null,
+                            List.of(new SimpleGrantedAuthority("ROLE_" + role))
+                    );
+                    SecurityContextHolder.getContext().setAuthentication(auth);
+                });
+            } else {
+                // If token is invalid/expired, clear the cookie to prevent stale sessions
+                Cookie cookie = new Cookie("AUTH_TOKEN", null);
+                cookie.setPath("/");
+                cookie.setHttpOnly(true);
+                cookie.setMaxAge(0);
+                response.addCookie(cookie);
+            }
         }
         chain.doFilter(request, response);
     }

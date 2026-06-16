@@ -65,8 +65,9 @@ public class WebController {
     @GetMapping("/dashboard")
     public String dashboard(Model model) {
         AppUser user = currentUser();
-        Long tenantId = user != null ? user.getTenantId() : null;
-        Long stageId  = user != null ? user.getStageId()  : null;
+        if (user == null) return "redirect:/login";
+        Long tenantId = user.getTenantId();
+        Long stageId  = user.getStageId();
         LocalDateTime now = LocalDateTime.now();
 
         long total, paid, pending, failed, activeTrips;
@@ -113,7 +114,8 @@ public class WebController {
     @GetMapping("/stages")
     public String stages(Model model) {
         AppUser user = currentUser();
-        Long tenantId = user != null ? user.getTenantId() : null;
+        if (user == null) return "redirect:/login";
+        Long tenantId = user.getTenantId();
         model.addAttribute("stages", tenantId != null
                 ? stageRepository.findByTenantId(tenantId)
                 : stageRepository.findAll());
@@ -124,7 +126,8 @@ public class WebController {
     @GetMapping("/trips")
     public String trips(Model model) {
         AppUser user = currentUser();
-        Long tenantId = user != null ? user.getTenantId() : null;
+        if (user == null) return "redirect:/login";
+        Long tenantId = user.getTenantId();
         model.addAttribute("trips", tenantId != null
                 ? tripRepository.findByTenantId(tenantId)
                 : tripRepository.findAll());
@@ -138,7 +141,8 @@ public class WebController {
     @GetMapping("/vehicles")
     public String vehicles(Model model) {
         AppUser user = currentUser();
-        Long stageId = user != null ? user.getStageId() : null;
+        if (user == null) return "redirect:/login";
+        Long stageId = user.getStageId();
         model.addAttribute("vehicles", stageId != null
                 ? vehicleRepository.findByStageId(stageId)
                 : vehicleRepository.findAll());
@@ -151,7 +155,8 @@ public class WebController {
                           @RequestParam(required = false) String search,
                           @RequestParam(required = false) String status) {
         AppUser user = currentUser();
-        Long tenantId = user != null ? user.getTenantId() : null;
+        if (user == null) return "redirect:/login";
+        Long tenantId = user.getTenantId();
         List<BookingEntity> all = tenantId != null
                 ? bookingRepository.findByTenantId(tenantId)
                 : bookingRepository.findAll();
@@ -176,7 +181,8 @@ public class WebController {
     @GetMapping({"/book", "/tickets/book"})
     public String bookTicket(Model model, @RequestParam(required = false) Long tripId) {
         AppUser user = currentUser();
-        Long tenantId = user != null ? user.getTenantId() : null;
+        if (user == null) return "redirect:/login";
+        Long tenantId = user.getTenantId();
         model.addAttribute("trips", tenantId != null
                 ? tripRepository.findByTenantId(tenantId)
                 : tripRepository.findAll());

@@ -42,17 +42,19 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Cache-first for static, fallback to network then offline page
+  // Network-first for everything else (pages), with offline fallback
   event.respondWith(
-    caches.match(event.request).then(cached => {
-      if (cached) return cached;
-      return fetch(event.request).then(response => {
-        if (response.ok) {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-        }
-        return response;
-      }).catch(() => caches.match('/offline'));
+    fetch(event.request).then(response => {
+      if (response.ok) {
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+      }
+      return response;
+    }).catch(() => {
+      return caches.match(event.request).then(cached => {
+        if (cached) return cached;
+        return caches.match('/offline');
+      });
     })
   );
 });
