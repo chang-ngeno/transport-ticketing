@@ -1,13 +1,18 @@
 package ke.co.masajr.transport.service;
 
 import ke.co.masajr.transport.entity.BookingEntity;
+import ke.co.masajr.transport.entity.BookingEntity.PaymentMethod;
 import ke.co.masajr.transport.entity.Fare;
 import ke.co.masajr.transport.entity.Trip;
+import ke.co.masajr.transport.entity.Vehicle;
 import ke.co.masajr.transport.repository.BookingRepository;
 import ke.co.masajr.transport.repository.FareRepository;
 import ke.co.masajr.transport.repository.TripRepository;
+import ke.co.masajr.transport.repository.VehicleRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -51,19 +56,29 @@ public class TicketBookingService {
     private final TripRepository tripRepository;
     private final FareRepository fareRepository;
     private final BookingRepository bookingRepository;
+    private final VehicleRepository vehicleRepository;
     private final MpesaService mpesaService;
     private final SmsService smsService;
+    private TicketBookingService self;
 
     public TicketBookingService(TripRepository tripRepository,
                                 FareRepository fareRepository,
                                 BookingRepository bookingRepository,
+                                VehicleRepository vehicleRepository,
                                 MpesaService mpesaService,
                                 SmsService smsService) {
         this.tripRepository = tripRepository;
         this.fareRepository = fareRepository;
         this.bookingRepository = bookingRepository;
+        this.vehicleRepository = vehicleRepository;
         this.mpesaService = mpesaService;
         this.smsService = smsService;
+        this.self = this;
+    }
+
+    @Autowired
+    public void setSelf(@Lazy TicketBookingService self) {
+        this.self = self;
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -93,128 +108,100 @@ public class TicketBookingService {
      */
     @Transactional
     public BookingEntity bookTicket(Long tenantId, Long tripId, String phoneNumber) {
+        return bookTicketInternal(tenantId, tripId, phoneNumber, PaymentMethod.MPESA.name());
+    }
+
+    @Transactional
+    public BookingEntity bookTicket(Long tenantId, Long tripId, String phoneNumber, String paymentMethod) {
+        return bookTicketInternal(tenantId, tripId, phoneNumber, paymentMethod);
+    }
+
+    private BookingEntity bookTicketInternal(Long tenantId, Long tripId, String phoneNumber, String paymentMethod) {
         Trip trip = tripRepository.findById(tripId)
-                .orElseThrow(() -> new RuntimeException("Trip not found: " + tripId));
+                .orElseThrow(() -> new IllegalArgumentException("Trip not found: " + tripId));
 
         if (!trip.getTenantId().equals(tenantId)) {
-            throw new RuntimeException("Trip does not belong to tenant");
+            throw new IllegalArgumentException("Trip does not belong to tenant");
         }
 
-        int available = trip.getTotalSeats() - trip.getBookedSeats();
-        if (available <= 0) {
-            throw new RuntimeException("No seats available on trip " + tripId);
+        Vehicle vehicle = vehicleRepository.findById(trip.getVehicleId())
+                .orElseThrow(() -> new IllegalArgumentException("Vehicle not found for trip: " + tripId));
+
+        if (trip.getBookedSeats() >= trip.getTotalSeats()) {
+            throw new IllegalStateException("Vehicle " + vehicle.getRegistrationNumber() + " is full");
         }
 
-        BigDecimal price = resolvePrice(tripId, trip.getDepartureTime());
+        PaymentMethod method = PaymentMethod.valueOf(paymentMethod.toUpperCase());
+        if (method == PaymentMethod.MPESA && (phoneNumber == null || phoneNumber.isBlank())) {
+            throw new IllegalArgumentException("Mobile number is required for M-PESA bookings");
+        }
+
+        BigDecimal price = resolvePrice(tripId, LocalDateTime.now());
         String ticketId = "TKT-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
 
         BookingEntity booking = new BookingEntity();
         booking.setTenantId(tenantId);
         booking.setTripId(tripId);
         booking.setTicketId(ticketId);
-        booking.setPhoneNumber(phoneNumber);
+        booking.setPhoneNumber(phoneNumber == null ? "" : phoneNumber);
+        booking.setPaymentMethod(method);
         booking.setAmount(price);
         booking.setPricePaid(price);
-        booking.setStatus("PENDING");
+        booking.setStatus(method == PaymentMethod.CASH ? "PAID" : "PENDING");
         bookingRepository.save(booking);
 
         trip.setBookedSeats(trip.getBookedSeats() + 1);
         tripRepository.save(trip);
 
-        // Parallel STK + SMS via structured concurrency
-        try (var scope = new StructuredTaskScope.ShutdownOnFailure()) {
-            var stkTask = scope.fork(() ->
-                    mpesaService.initiateStk(tenantId, phoneNumber, price.doubleValue(), ticketId));
-
-            scope.fork(() -> {
+        if (method == PaymentMethod.CASH) {
+            if (phoneNumber != null && !phoneNumber.isBlank()) {
                 smsService.sendSms(phoneNumber, String.format(
-                        "Your ticket %s is confirmed. Amount: KES %.2f. Awaiting payment.",
-                        ticketId, price));
-                return null;
-            });
+                        "Your ticket %s has been booked and paid in cash. Enjoy your trip!", ticketId));
+            }
+        } else {
+            try (var scope = new StructuredTaskScope.ShutdownOnFailure()) {
+                var stkTask = scope.fork(() ->
+                        mpesaService.initiateStk(tenantId, phoneNumber, price.doubleValue(), ticketId));
 
-            scope.join().throwIfFailed();
+                scope.fork(() -> {
+                    smsService.sendSms(phoneNumber, String.format(
+                            "Ticket %s booked. Amount: KES %.2f. Awaiting M-PESA payment.",
+                            ticketId, price));
+                    return null;
+                });
 
-            booking.setCheckoutRequestId(stkTask.get());
-            bookingRepository.save(booking);
-
-        } catch (Exception e) {
-            log.error("STK/SMS failed for ticket {}: {}", ticketId, e.getMessage());
-            // Booking stays PENDING – M-PESA callback will update status
+                scope.join().throwIfFailed();
+                booking.setCheckoutRequestId(stkTask.get());
+                bookingRepository.save(booking);
+            } catch (Exception e) {
+                log.error("STK/SMS failed for ticket {}: {}", ticketId, e.getMessage());
+                // Booking stays PENDING – M-PESA callback will update status
+            }
         }
 
         return booking;
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // §3 — High-throughput batch: Virtual Threads + Semaphore throttle
-    // ─────────────────────────────────────────────────────────────────────────
-
-    /**
-     * Books tickets for multiple phone numbers using a virtual-thread-per-task
-     * executor throttled by a Semaphore (max 50 concurrent M-PESA calls).
-     *
-     * <p>Null-safety (§2 of guide):
-     * <ul>
-     *   <li>Null array → early return (no-op)</li>
-     *   <li>Null elements → filtered via {@link Objects#nonNull}</li>
-     * </ul>
-     *
-     * @param tenantId    owning tenant
-     * @param tripId      target trip
-     * @param phoneNumbers varargs – zero or more phone numbers; nulls are ignored
-     */
-    public void processWithVirtualThreads(Long tenantId, Long tripId, String... phoneNumbers) {
-        // §2 guard: null array
-        if (phoneNumbers == null) return;
-
-        try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
-            Arrays.stream(phoneNumbers)
-                    .filter(Objects::nonNull)                          // §2 guard: null elements
-                    .forEach(phone -> executor.submit(() -> {
-                        mpesaRateLimit.acquire();                      // §3 backpressure
-                        try {
-                            bookTicket(tenantId, tripId, phone);
-                        } finally {
-                            mpesaRateLimit.release();
-                        }
-                        return null;
-                    }));
-        }
+    public List<BookingEntity> processBatchBookingsWithDefaultPayment(Long tenantId, Long tripId,
+                                                                         String... phoneNumbers) throws Exception {
+        return processBatchBookings(tenantId, tripId, PaymentMethod.MPESA.name(), phoneNumbers);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // §4 — Atomic batch: StructuredTaskScope.ShutdownOnFailure
-    // ─────────────────────────────────────────────────────────────────────────
-
-    /**
-     * Books tickets as an atomic batch: if any single booking fails, all
-     * sibling sub-tasks are cancelled immediately (ShutdownOnFailure).
-     *
-     * <p>Returns the list of created {@link BookingEntity} objects on full success.
-     *
-     * <p>Null-safety: null array → empty list; null elements → skipped.
-     *
-     * @param tenantId     owning tenant
-     * @param tripId       target trip
-     * @param phoneNumbers varargs phone numbers
-     * @throws Exception   propagated from the first failed sub-task
-     */
     public List<BookingEntity> processBatchBookings(Long tenantId, Long tripId,
-                                                    String... phoneNumbers) throws Exception {
-        // §2 guard: null array
+                                                    String paymentMethod, String... phoneNumbers) throws Exception {
         if (phoneNumbers == null) return List.of();
 
         List<BookingEntity> results = new ArrayList<>();
 
         try (var scope = new StructuredTaskScope.ShutdownOnFailure()) {
+            @SuppressWarnings("unchecked")
             List<StructuredTaskScope.Subtask<BookingEntity>> tasks = Arrays.stream(phoneNumbers)
-                    .filter(Objects::nonNull)                          // §2 guard: null elements
-                    .map(phone -> scope.fork(() -> bookTicket(tenantId, tripId, phone)))
+                    .filter(Objects::nonNull)
+                    .map(phone -> (StructuredTaskScope.Subtask<BookingEntity>) scope.fork(() -> self.bookTicket(tenantId, tripId, phone, paymentMethod)))
                     .toList();
 
-            scope.join();            // wait for all sub-tasks
-            scope.throwIfFailed();   // 4: propagate first error, cancel siblings
+            scope.join();
+            scope.throwIfFailed();
 
             for (var task : tasks) {
                 results.add(task.get());
@@ -224,33 +211,46 @@ public class TicketBookingService {
         return results;
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // §4 variant — Strict batch (void, throws on first failure)
-    // ─────────────────────────────────────────────────────────────────────────
+    public void processStrictBatchWithDefaultPayment(Long tenantId, Long tripId,
+                                                      String... phoneNumbers) throws Exception {
+        processStrictBatch(tenantId, tripId, PaymentMethod.MPESA.name(), phoneNumbers);
+    }
 
-    /**
-     * Strict all-or-nothing batch that mirrors the guide's {@code processStrictBatch}
-     * pattern exactly. Void return; throws if any sub-task fails.
-     *
-     * @param tenantId     owning tenant
-     * @param tripId       target trip
-     * @param phoneNumbers varargs; null array or null elements are safely ignored
-     * @throws Exception   first sub-task exception, others cancelled
-     */
     public void processStrictBatch(Long tenantId, Long tripId,
-                                   String... phoneNumbers) throws Exception {
+                                   String paymentMethod, String... phoneNumbers) throws Exception {
         if (phoneNumbers == null) return;
 
         try (var scope = new StructuredTaskScope.ShutdownOnFailure()) {
-            for (String phone : phoneNumbers) {
-                if (phone == null) continue;                           // §2 null element guard
-                scope.fork(() -> {
-                    bookTicket(tenantId, tripId, phone);
-                    return null;
-                });
-            }
-            scope.join();            // wait for all threads
-            scope.throwIfFailed();   // propagate the first encountered error
+            Arrays.stream(phoneNumbers)
+                    .filter(Objects::nonNull)
+                    .forEach(phone -> scope.fork(() -> {
+                        self.bookTicket(tenantId, tripId, phone, paymentMethod);
+                        return null;
+                    }));
+            scope.join();
+            scope.throwIfFailed();
+        }
+    }
+
+    public void processWithVirtualThreadsWithDefaultPayment(Long tenantId, Long tripId, String... phoneNumbers) {
+        processWithVirtualThreads(tenantId, tripId, PaymentMethod.MPESA.name(), phoneNumbers);
+    }
+
+    public void processWithVirtualThreads(Long tenantId, Long tripId, String paymentMethod, String... phoneNumbers) {
+        if (phoneNumbers == null) return;
+
+        try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+            Arrays.stream(phoneNumbers)
+                    .filter(Objects::nonNull)
+                    .forEach(phone -> executor.submit(() -> {
+                        mpesaRateLimit.acquire();
+                        try {
+                            self.bookTicket(tenantId, tripId, phone, paymentMethod);
+                        } finally {
+                            mpesaRateLimit.release();
+                        }
+                        return null;
+                    }));
         }
     }
 

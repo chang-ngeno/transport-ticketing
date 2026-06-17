@@ -73,13 +73,13 @@ class TicketBookingServiceTest {
         @Test
         @DisplayName("Zero args: processBatchBookings does not throw")
         void zeroArgs_doesNotThrow() {
-            assertDoesNotThrow(() -> service.processBatchBookings(10L, 1L));
+            assertDoesNotThrow(() -> service.processBatchBookingsWithDefaultPayment(10L, 1L));
         }
 
         @Test
         @DisplayName("Null array: processBatchBookings returns empty list")
         void nullArray_returnsEmpty() throws Exception {
-            List<BookingEntity> result = service.processBatchBookings(10L, 1L, (String[]) null);
+            List<BookingEntity> result = service.processBatchBookingsWithDefaultPayment(10L, 1L, (String[]) null);
             assertThat(result).isEmpty();
             verifyNoInteractions(tripRepository, bookingRepository, mpesaService);
         }
@@ -104,20 +104,20 @@ class TicketBookingServiceTest {
         @Test
         @DisplayName("Zero args: processStrictBatch does not throw")
         void zeroArgs_strictBatch_doesNotThrow() {
-            assertDoesNotThrow(() -> service.processStrictBatch(10L, 1L));
+            assertDoesNotThrow(() -> service.processStrictBatchWithDefaultPayment(10L, 1L));
         }
 
         @Test
         @DisplayName("Null array: processStrictBatch returns cleanly")
         void nullArray_strictBatch_returnsCleanly() {
-            assertDoesNotThrow(() -> service.processStrictBatch(10L, 1L, (String[]) null));
+            assertDoesNotThrow(() -> service.processStrictBatchWithDefaultPayment(10L, 1L, (String[]) null));
             verifyNoInteractions(tripRepository);
         }
 
         @Test
         @DisplayName("Null array: processWithVirtualThreads returns cleanly")
         void nullArray_virtualThreads_returnsCleanly() {
-            assertDoesNotThrow(() -> service.processWithVirtualThreads(10L, 1L, (String[]) null));
+            assertDoesNotThrow(() -> service.processWithVirtualThreadsWithDefaultPayment(10L, 1L, (String[]) null));
             verifyNoInteractions(tripRepository);
         }
 

@@ -76,6 +76,8 @@ public class TenantWebController {
 
     @PostMapping("/tenant/trips")
     public String createTrip(@RequestParam Long fromStageId,
+                             @RequestParam(required = false) Long toStageId,
+                             @RequestParam(required = false) Long vehicleId,
                              @RequestParam String toDestination,
                              @RequestParam(required = false) String route,
                              @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm") LocalDateTime departureTime,
@@ -87,7 +89,7 @@ public class TenantWebController {
         try {
             Long tid = caller.getTenantId() != null ? caller.getTenantId() : tenantId;
             if (tid == null) throw new IllegalArgumentException("Tenant is required.");
-            tenantService.createTrip(tid, fromStageId, toDestination,
+            tenantService.createTrip(tid, fromStageId, toStageId, vehicleId, toDestination,
                     route, departureTime, totalSeats, basePrice);
             ra.addFlashAttribute("success", "Trip to '" + toDestination + "' created.");
         } catch (Exception e) {

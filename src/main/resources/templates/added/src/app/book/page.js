@@ -1,10 +1,10 @@
 'use client';
 import { useEffect, useState, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useRequireAuth } from '@/lib/auth';
 import AppShell from '@/components/layout/AppShell';
 import { PageHeader, Button, Input, Select, Alert, StatusBadge, Modal } from '@/components/ui';
-import { ticketApi, tripApi } from '@/lib/api';
+import { ticketApi, tripApi, tenantVehicleApi } from '@/lib/api';
 import { fmt, fmtKES, fmtSeats } from '@/lib/utils';
 import { CheckCircle, PlusCircle, Trash2, Phone } from 'lucide-react';
 
@@ -17,28 +17,71 @@ function BookForm() {
   const [tripId,   setTripId]   = useState(params.get('tripId') || '');
   const [phone,    setPhone]    = useState('');
   const [phones,   setPhones]   = useState(['']);
+  const [vehicles, setVehicles] = useState([]);
+  const [vehicleQuery, setVehicleQuery] = useState('');
+  const [selectedVehicleId, setSelectedVehicleId] = useState('');
   const [loading,  setLoading]  = useState(false);
   const [tripsLoading, setTripsLoading] = useState(true);
+  const [vehiclesLoading, setVehiclesLoading] = useState(true);
   const [result,   setResult]   = useState(null); // booking or bookings[]
   const [error,    setError]    = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('CASH');
+  const [vehicleFullReg, setVehicleFullReg] = useState(null);
+  const router = useRouter();
 
   useEffect(() => {
-    tripApi.list()
-      .then(setTrips)
-      .catch(() => {})
-      .finally(() => setTripsLoading(false));
+    async function load() {
+      try {
+        const [tripData, vehicleData] = await Promise.all([
+          tripApi.list(),
+          tenantVehicleApi.search(''),
+        ]);
+        setTrips(tripData);
+        setVehicles(vehicleData);
+      } catch {
+        setVehicles([]);
+      } finally {
+        setTripsLoading(false);
+        setVehiclesLoading(false);
+      }
+    }
+
+    load();
   }, []);
 
   const selectedTrip = trips.find(t => String(t.id) === String(tripId));
+
+  async function loadVehicles(query = '') {
+    setVehicleQuery(query);
+    setVehiclesLoading(true);
+    try {
+      const data = await tenantVehicleApi.search(query);
+      setVehicles(data);
+    } catch {
+      setVehicles([]);
+    } finally {
+      setVehiclesLoading(false);
+    }
+  }
 
   async function handleSingle(e) {
     e.preventDefault();
     setLoading(true); setError(''); setResult(null);
     try {
-      const booking = await ticketApi.book({ tripId: Number(tripId), phoneNumber: phone });
+      const booking = await ticketApi.book({
+        tripId: Number(tripId),
+        phoneNumber: phone,
+        paymentMethod,
+      });
       setResult(booking);
     } catch (err) {
-      setError(err.message || 'Booking failed');
+      const msg = err.message || 'Booking failed';
+      if (msg.includes('is full')) {
+        const m = msg.match(/Vehicle\s+(.*?)\s+is full/);
+        setVehicleFullReg(m ? m[1] : null);
+      } else {
+        setError(msg);
+      }
     } finally { setLoading(false); }
   }
 
@@ -48,10 +91,20 @@ function BookForm() {
     if (!validPhones.length) { setError('Add at least one phone number'); return; }
     setLoading(true); setError(''); setResult(null);
     try {
-      const bookings = await ticketApi.bookBatch({ tripId: Number(tripId), phoneNumbers: validPhones });
+      const bookings = await ticketApi.bookBatch({
+        tripId: Number(tripId),
+        phoneNumbers: validPhones,
+        paymentMethod,
+      });
       setResult(bookings);
     } catch (err) {
-      setError(err.message || 'Batch booking failed');
+        const msg = err.message || 'Batch booking failed';
+        if (msg.includes('is full')) {
+          const m = msg.match(/Vehicle\s+(.*?)\s+is full/);
+          setVehicleFullReg(m ? m[1] : null);
+        } else {
+          setError(msg);
+        }
     } finally { setLoading(false); }
   }
 
@@ -59,7 +112,16 @@ function BookForm() {
   function removePhone(i) { setPhones(p => p.filter((_, j) => j !== i)); }
   function setPhoneAt(i, v) { setPhones(p => p.map((x, j) => j === i ? v : x)); }
 
-  const tripOptions = trips.map(t => ({
+  const vehicleOptions = vehicles.map(v => ({
+    value: v.id,
+    label: v.registrationNumber,
+  }));
+
+  const filteredTrips = trips.filter(t =>
+    selectedVehicleId ? String(t.vehicleId) === String(selectedVehicleId) : true
+  );
+
+  const tripOptions = filteredTrips.map(t => ({
     value: t.id,
     label: `${fmt(t.departureTime, 'dd MMM HH:mm')} → ${t.toDestination} | ${fmtKES(t.pricePerSeat)} (${t.totalSeats - t.bookedSeats} seats)`,
   }));
@@ -83,6 +145,23 @@ function BookForm() {
             </button>
           ))}
         </div>
+
+        {/* Vehicle full modal */}
+        <Modal
+          open={Boolean(vehicleFullReg)}
+          onClose={() => setVehicleFullReg(null)}
+          title="Vehicle Full"
+        >
+          <p className="mb-4">{vehicleFullReg} is now full.</p>
+          <div className="flex gap-2 justify-end">
+            <Button onClick={() => { setVehicleFullReg(null); router.push('/trips'); }}>
+              Start New Trip
+            </Button>
+            <Button variant="ghost" onClick={() => setVehicleFullReg(null)}>
+              Close
+            </Button>
+          </div>
+        </Modal>
 
         {/* Success result */}
         {result && !Array.isArray(result) && (
@@ -153,6 +232,20 @@ function BookForm() {
               {error && <Alert type="error" message={error} onClose={() => setError('')}/>}
 
               <form onSubmit={mode === 'single' ? handleSingle : handleBatch} className="space-y-4">
+                <Input
+                  label="Search Vehicle Registration"
+                  value={vehicleQuery}
+                  onChange={e => loadVehicles(e.target.value)}
+                  placeholder="Search registration…"
+                  className="mb-4"
+                />
+                <Select
+                  label="Vehicle"
+                  value={selectedVehicleId}
+                  onChange={e => setSelectedVehicleId(e.target.value)}
+                  options={vehicleOptions}
+                  placeholder={vehiclesLoading ? 'Loading vehicles…' : 'Choose vehicle…'}
+                />
                 <Select
                   label="Select Trip"
                   value={tripId}
@@ -169,6 +262,16 @@ function BookForm() {
                   </div>
                 )}
 
+                <Select
+                  label="Payment Method"
+                  value={paymentMethod}
+                  onChange={e => setPaymentMethod(e.target.value)}
+                  options={[
+                    { value: 'CASH', label: 'Cash' },
+                    { value: 'MPESA', label: 'M-PESA' },
+                  ]}
+                />
+
                 {mode === 'single' ? (
                   <Input
                     label="Passenger Phone Number"
@@ -176,8 +279,10 @@ function BookForm() {
                     value={phone}
                     onChange={e => setPhone(e.target.value)}
                     placeholder="+254712345678"
-                    hint="M-PESA STK push will be sent to this number"
-                    required
+                    hint={paymentMethod === 'MPESA'
+                      ? 'M-PESA STK push will be sent to this number'
+                      : 'Optional for cash bookings — SMS only when provided'}
+                    required={paymentMethod === 'MPESA'}
                   />
                 ) : (
                   <div className="space-y-2">

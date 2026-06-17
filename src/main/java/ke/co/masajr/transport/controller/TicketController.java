@@ -1,6 +1,9 @@
 package ke.co.masajr.transport.controller;
 
 import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
+import jakarta.validation.Valid;
+import ke.co.masajr.transport.dto.BatchBookingRequest;
+import ke.co.masajr.transport.dto.BookingRequest;
 import ke.co.masajr.transport.entity.AppUser;
 import ke.co.masajr.transport.entity.BookingEntity;
 import ke.co.masajr.transport.service.TicketBookingService;
@@ -10,7 +13,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/tickets")
@@ -25,24 +27,41 @@ public class TicketController {
     @PreAuthorize("hasAnyRole('STAGE_ATTENDANT','STAGE_HEAD','TENANT_ADMIN','SUPER_ADMIN')")
     @RateLimiter(name = "booking")
     @PostMapping("/book")
-    public ResponseEntity<BookingEntity> book(@RequestBody Map<String, Object> body,
+    public ResponseEntity<BookingEntity> book(@Valid @RequestBody BookingRequest request,
                                                @AuthenticationPrincipal AppUser caller) {
-        Long tripId = Long.parseLong(body.get("tripId").toString());
-        String phone = body.get("phoneNumber").toString();
-        BookingEntity booking = bookingService.bookTicket(caller.getTenantId(), tripId, phone);
+        if (request.paymentMethod().equalsIgnoreCase("MPESA") &&
+                (request.phoneNumber() == null || request.phoneNumber().isBlank())) {
+            throw new IllegalArgumentException("Mobile number is required for M-PESA bookings");
+        }
+
+        BookingEntity booking = bookingService.bookTicket(
+                caller.getTenantId(),
+                request.tripId(),
+                request.phoneNumber(),
+                request.paymentMethod()
+        );
         return ResponseEntity.ok(booking);
     }
 
     @PreAuthorize("hasAnyRole('STAGE_ATTENDANT','STAGE_HEAD','TENANT_ADMIN','SUPER_ADMIN')")
     @RateLimiter(name = "booking")
     @PostMapping("/book/batch")
-    public ResponseEntity<List<BookingEntity>> bookBatch(@RequestBody Map<String, Object> body,
+    public ResponseEntity<List<BookingEntity>> bookBatch(@Valid @RequestBody BatchBookingRequest request,
                                                           @AuthenticationPrincipal AppUser caller) throws Exception {
-        Long tripId = Long.parseLong(body.get("tripId").toString());
-        @SuppressWarnings("unchecked")
-        List<String> phones = (List<String>) body.get("phoneNumbers");
+        List<String> phoneNumbers = request.phoneNumbers().stream()
+            .filter(phone -> phone != null && !phone.isBlank())
+            .toList();
+
+        if (request.paymentMethod().equalsIgnoreCase("MPESA") && phoneNumbers.isEmpty()) {
+            throw new IllegalArgumentException("At least one mobile number is required for M-PESA batch bookings");
+        }
+
         List<BookingEntity> bookings = bookingService.processBatchBookings(
-                caller.getTenantId(), tripId, phones.toArray(String[]::new));
+                caller.getTenantId(),
+                request.tripId(),
+                request.paymentMethod(),
+                phoneNumbers.toArray(String[]::new)
+        );
         return ResponseEntity.ok(bookings);
     }
 

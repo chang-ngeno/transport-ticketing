@@ -116,6 +116,14 @@ public class TenantController {
         return ResponseEntity.ok(tenantService.listStages(caller.getTenantId()));
     }
 
+    @PreAuthorize("hasAnyRole('TENANT_ADMIN','SUPER_ADMIN','STAGE_HEAD','STAGE_ATTENDANT')")
+    @GetMapping("/tenant/vehicles/search")
+    public ResponseEntity<List<Vehicle>> searchVehicles(@RequestParam(required = false) String q,
+                                                        @AuthenticationPrincipal AppUser caller) {
+        Long tenantId = caller.getTenantId();
+        return ResponseEntity.ok(tenantService.searchVehicles(tenantId, q));
+    }
+
     // ── Trips ─────────────────────────────────────────────────────────────────
 
     @PreAuthorize("hasAnyRole('TENANT_ADMIN','SUPER_ADMIN')")
@@ -124,8 +132,8 @@ public class TenantController {
                                            @AuthenticationPrincipal AppUser caller) {
         Long tenantId = caller.getRole() == Role.SUPER_ADMIN ? req.tenantId() : caller.getTenantId();
         return ResponseEntity.ok(tenantService.createTrip(
-                tenantId, req.fromStageId(), req.toDestination(),
-                req.route(), req.departureTime(), req.totalSeats(), req.basePrice()));
+            tenantId, req.fromStageId(), req.toStageId(), req.vehicleId(), req.toDestination(),
+            req.route(), req.departureTime(), req.totalSeats(), req.basePrice()));
     }
 
     @PreAuthorize("hasAnyRole('TENANT_ADMIN','SUPER_ADMIN','STAGE_HEAD','STAGE_ATTENDANT')")

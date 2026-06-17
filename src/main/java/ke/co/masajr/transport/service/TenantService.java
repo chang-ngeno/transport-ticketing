@@ -109,10 +109,10 @@ public class TenantService {
     // ── Trips ─────────────────────────────────────────────────────────────────
 
     @Transactional
-    public Trip createTrip(Long tenantId, Long fromStageId, String toDestination,
+    public Trip createTrip(Long tenantId, Long fromStageId, Long toStageId, Long vehicleId, String toDestination,
                            String route, java.time.LocalDateTime departureTime,
                            int totalSeats, java.math.BigDecimal basePrice) {
-        return tripService.createTrip(tenantId, fromStageId, toDestination, route, departureTime, totalSeats, basePrice);
+        return tripService.createTrip(tenantId, fromStageId, toStageId, vehicleId, toDestination, route, departureTime, totalSeats, basePrice);
     }
 
     public List<Trip> listTrips(Long tenantId) {
@@ -145,6 +145,10 @@ public class TenantService {
 
     public List<Vehicle> listVehicles(Long stageId) {
         return vehicleService.listVehicles(stageId);
+    }
+
+    public List<Vehicle> searchVehicles(Long tenantId, String query) {
+        return vehicleService.searchByTenant(tenantId, query);
     }
 
     @Transactional

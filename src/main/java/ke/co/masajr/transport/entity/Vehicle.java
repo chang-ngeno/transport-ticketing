@@ -11,8 +11,11 @@ public class Vehicle {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "stage_id", nullable = false)
-    private Long stageId;
+    @Column(name = "tenant_id", nullable = false)
+    private Long tenantId;
+
+    @Column(name = "stage_id")
+    private Long stageId;  // optional
 
     @Column(name = "registration_number", nullable = false, unique = true, length = 20)
     private String registrationNumber;

@@ -36,6 +36,12 @@ public class BookingEntity {
     @Column(length = 20)
     private String status = "PENDING";
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_method", length = 10)
+    private PaymentMethod paymentMethod = PaymentMethod.CASH;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();
+
+    public enum PaymentMethod { CASH, MPESA }
 }

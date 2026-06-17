@@ -7,11 +7,13 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public record CreateTripRequest(
-        @NotNull Long fromStageId,
-        @NotBlank String toDestination,
-        String route,
-        @NotNull LocalDateTime departureTime,
-        @NotNull @Min(1) Integer totalSeats,
-        @NotNull BigDecimal basePrice,
-        Long tenantId   // used only by SUPER_ADMIN
+    @NotNull Long fromStageId,
+    Long toStageId,
+    @NotNull Long vehicleId,
+    String toDestination,
+    String route,
+    @NotNull LocalDateTime departureTime,
+    @NotNull Integer totalSeats,
+    @NotNull BigDecimal basePrice,
+    Long tenantId
 ) {}

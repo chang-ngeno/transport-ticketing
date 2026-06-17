@@ -15,11 +15,17 @@ public class Trip {
     @Column(name = "tenant_id", nullable = false)
     private Long tenantId;
 
-    @Column(name = "from_stage_id")
+    @Column(name = "from_stage_id", nullable = false)
     private Long fromStageId;
+
+    @Column(name = "to_stage_id")
+    private Long toStageId;
 
     @Column(name = "to_destination", length = 200)
     private String toDestination;
+
+    @Column(name = "vehicle_id", nullable = false)
+    private Long vehicleId;
 
     @Column(length = 200)
     private String route;

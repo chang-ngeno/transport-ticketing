@@ -9,4 +9,6 @@ public interface VehicleRepository extends JpaRepository<Vehicle, Long> {
     List<Vehicle> findByStageIdAndIsActive(Long stageId, Boolean isActive);
     long countByStageIdAndIsActive(Long stageId, Boolean isActive);
     long countByIsActive(Boolean isActive);
+    List<Vehicle> findByTenantId(Long tenantId);
+    List<Vehicle> findByTenantIdAndRegistrationNumberContainingIgnoreCase(Long tenantId, String reg);
 }

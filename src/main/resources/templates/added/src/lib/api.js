@@ -102,6 +102,10 @@ export const vehicleApi = {
   toggle: (id, active)    => patch(`/stage/vehicles/${id}/toggle`, { active }),
 };
 
+export const tenantVehicleApi = {
+  search: (query)         => get(`/tenant/vehicles/search?q=${encodeURIComponent(query || '')}`),
+};
+
 // ── Tickets ───────────────────────────────────────
 export const ticketApi = {
   list:      ()           => get('/tickets'),

@@ -6,5 +6,6 @@ import java.util.List;
 
 public record BatchBookingRequest(
         @NotNull Long tripId,
-        @NotEmpty List<String> phoneNumbers
+        @NotEmpty List<String> phoneNumbers,
+        @NotNull String paymentMethod
 ) {}

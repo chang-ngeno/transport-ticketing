@@ -3,12 +3,12 @@ import { useEffect, useState } from 'react';
 import { useRequireAuth } from '@/lib/auth';
 import AppShell from '@/components/layout/AppShell';
 import { PageHeader, Button, Input, Select, Modal, Alert, SkeletonRows, EmptyState, useToast } from '@/components/ui';
-import { tripApi, stageApi } from '@/lib/api';
+import { tripApi, stageApi, tenantVehicleApi } from '@/lib/api';
 import { fmt, fmtKES, fmtSeats } from '@/lib/utils';
 import Link from 'next/link';
 import { PlusCircle, TrendingUp, Layers } from 'lucide-react';
 
-const EMPTY = { fromStageId: '', toDestination: '', route: '', departureTime: '', totalSeats: '', basePrice: '' };
+const EMPTY = { fromStageId: '', vehicleId: '', toDestination: '', route: '', departureTime: '', totalSeats: '', basePrice: '' };
 
 export default function AdminTripsPage() {
   const { is } = useRequireAuth('SUPER_ADMIN', 'TENANT_ADMIN');
@@ -16,19 +16,44 @@ export default function AdminTripsPage() {
 
   const [trips,   setTrips]   = useState([]);
   const [stages,  setStages]  = useState([]);
+  const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [vehiclesLoading, setVehiclesLoading] = useState(true);
   const [modal,   setModal]   = useState(false);
   const [form,    setForm]    = useState(EMPTY);
   const [saving,  setSaving]  = useState(false);
   const [error,   setError]   = useState('');
   const [filter,  setFilter]  = useState('');
+  const [vehicleQuery, setVehicleQuery] = useState('');
 
   async function load() {
     try {
-      const [t, s] = await Promise.all([tripApi.list(), stageApi.list()]);
-      setTrips(t); setStages(s);
+      const [t, s, v] = await Promise.all([
+        tripApi.list(),
+        stageApi.list(),
+        tenantVehicleApi.search(''),
+      ]);
+      setTrips(t);
+      setStages(s);
+      setVehicles(v);
     } catch {}
-    finally { setLoading(false); }
+    finally {
+      setLoading(false);
+      setVehiclesLoading(false);
+    }
+  }
+
+  async function loadVehicles(query = '') {
+    setVehicleQuery(query);
+    setVehiclesLoading(true);
+    try {
+      const results = await tenantVehicleApi.search(query);
+      setVehicles(results);
+    } catch {
+      setVehicles([]);
+    } finally {
+      setVehiclesLoading(false);
+    }
   }
 
   useEffect(() => { load(); }, []);
@@ -42,8 +67,9 @@ export default function AdminTripsPage() {
       await tripApi.create({
         ...form,
         fromStageId: Number(form.fromStageId),
-        totalSeats:  Number(form.totalSeats),
-        basePrice:   Number(form.basePrice),
+        vehicleId:  Number(form.vehicleId),
+        totalSeats: Number(form.totalSeats),
+        basePrice:  Number(form.basePrice),
       });
       show('success', 'Trip created');
       setModal(false); setForm(EMPTY); load();
@@ -162,6 +188,15 @@ export default function AdminTripsPage() {
         <form onSubmit={handleCreate} className="space-y-4">
           <Select label="From Stage" value={form.fromStageId} onChange={e => set('fromStageId', e.target.value)} options={stageOpts} placeholder="Select stage…" required/>
           <div className="grid grid-cols-2 gap-3">
+            <Input label="Vehicle Search" value={vehicleQuery} onChange={e => loadVehicles(e.target.value)} placeholder="Search registration…" className="col-span-2"/>
+            <Select
+              label="Vehicle"
+              value={form.vehicleId}
+              onChange={e => set('vehicleId', e.target.value)}
+              options={vehicles.map(v => ({ value: v.id, label: `${v.registrationNumber} (${v.capacity} seats)` }))}
+              placeholder={vehiclesLoading ? 'Loading vehicles…' : 'Select vehicle…'}
+              required
+            />
             <Input label="Destination" value={form.toDestination} onChange={e => set('toDestination', e.target.value)} placeholder="Nairobi CBD" required className="col-span-2"/>
             <Input label="Route (optional)" value={form.route} onChange={e => set('route', e.target.value)} placeholder="via Thika Rd" className="col-span-2"/>
             <Input label="Departure Time" type="datetime-local" value={form.departureTime} onChange={e => set('departureTime', e.target.value)} required/>
