@@ -56,6 +56,20 @@ export default function AdminTripsPage() {
     }
   }
 
+  function nowLocalDateTime() {
+    return new Date().toISOString().slice(0, 16);
+  }
+
+  useEffect(() => {
+    if (modal) set('departureTime', nowLocalDateTime());
+  }, [modal]);
+
+  useEffect(() => {
+    if (!form.vehicleId) return;
+    const vehicle = vehicles.find(v => String(v.id) === String(form.vehicleId));
+    if (vehicle) set('totalSeats', String(vehicle.capacity));
+  }, [form.vehicleId, vehicles]);
+
   useEffect(() => { load(); }, []);
 
   function set(k, v) { setForm(f => ({ ...f, [k]: v })); }
@@ -199,8 +213,24 @@ export default function AdminTripsPage() {
             />
             <Input label="Destination" value={form.toDestination} onChange={e => set('toDestination', e.target.value)} placeholder="Nairobi CBD" required className="col-span-2"/>
             <Input label="Route (optional)" value={form.route} onChange={e => set('route', e.target.value)} placeholder="via Thika Rd" className="col-span-2"/>
-            <Input label="Departure Time" type="datetime-local" value={form.departureTime} onChange={e => set('departureTime', e.target.value)} required/>
-            <Input label="Total Seats" type="number" min="1" value={form.totalSeats} onChange={e => set('totalSeats', e.target.value)} placeholder="14" required/>
+            <Input
+              label="Departure Time"
+              type="datetime-local"
+              value={form.departureTime}
+              onChange={e => set('departureTime', e.target.value)}
+              required
+              disabled
+            />
+            <Input
+              label="Total Seats"
+              type="number"
+              min="1"
+              value={form.totalSeats}
+              onChange={e => set('totalSeats', e.target.value)}
+              placeholder="14"
+              required
+              disabled
+            />
           </div>
           <Input label="Base Price (KES)" type="number" step="0.01" min="0" value={form.basePrice} onChange={e => set('basePrice', e.target.value)} placeholder="150.00" required/>
         </form>

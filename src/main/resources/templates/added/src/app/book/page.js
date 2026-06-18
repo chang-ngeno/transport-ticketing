@@ -50,6 +50,13 @@ function BookForm() {
   }, []);
 
   const selectedTrip = trips.find(t => String(t.id) === String(tripId));
+  const selectedVehicle = vehicles.find(v => String(v.id) === String(selectedTrip?.vehicleId));
+
+  useEffect(() => {
+    if (selectedTrip) {
+      setSelectedVehicleId(String(selectedTrip.vehicleId));
+    }
+  }, [selectedTrip]);
 
   async function loadVehicles(query = '') {
     setVehicleQuery(query);
@@ -121,10 +128,14 @@ function BookForm() {
     selectedVehicleId ? String(t.vehicleId) === String(selectedVehicleId) : true
   );
 
-  const tripOptions = filteredTrips.map(t => ({
-    value: t.id,
-    label: `${fmt(t.departureTime, 'dd MMM HH:mm')} → ${t.toDestination} | ${fmtKES(t.pricePerSeat)} (${t.totalSeats - t.bookedSeats} seats)`,
-  }));
+  const tripOptions = filteredTrips.map(t => {
+    const tripVehicle = vehicles.find(v => String(v.id) === String(t.vehicleId));
+    const vehicleLabel = tripVehicle ? ` [${tripVehicle.registrationNumber}]` : '';
+    return {
+      value: t.id,
+      label: `${fmt(t.departureTime, 'dd MMM HH:mm')} → ${t.toDestination}${vehicleLabel} | ${fmtKES(t.pricePerSeat)} (${t.totalSeats - t.bookedSeats} seats)`,
+    };
+  });
 
   return (
     <AppShell title="Book Ticket">
@@ -254,6 +265,14 @@ function BookForm() {
                   placeholder={tripsLoading ? 'Loading trips…' : 'Choose a trip…'}
                   required
                 />
+
+                {selectedTrip && (
+                  <div className="grid grid-cols-3 gap-3 mb-4">
+                    <Input label="Vehicle" value={selectedVehicle?.registrationNumber ?? `#${selectedTrip.vehicleId}`} disabled />
+                    <Input label="Departure Time" value={fmt(selectedTrip.departureTime, 'dd MMM yyyy HH:mm')} disabled />
+                    <Input label="Total Seats" value={String(selectedTrip.totalSeats)} disabled />
+                  </div>
+                )}
 
                 {selectedTrip && (
                   <div className="flex items-center justify-between bg-panel rounded px-4 py-3 text-xs font-mono border border-border">
