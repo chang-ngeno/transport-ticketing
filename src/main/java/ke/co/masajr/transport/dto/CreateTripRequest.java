@@ -9,11 +9,11 @@ import java.time.LocalDateTime;
 public record CreateTripRequest(
     @NotNull Long fromStageId,
     Long toStageId,
-    @NotNull Long vehicleId,
+    Long vehicleId,
     String toDestination,
     String route,
-    @NotNull LocalDateTime departureTime,
-    @NotNull Integer totalSeats,
+    LocalDateTime tripStartTime,
+    Integer totalSeats,
     @NotNull BigDecimal basePrice,
     Long tenantId
 ) {}

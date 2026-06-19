@@ -43,5 +43,8 @@ public class BookingEntity {
     @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();
 
+    @Column(name = "passenger_count", nullable = false)
+    private Integer passengerCount = 0;
+
     public enum PaymentMethod { CASH, MPESA }
 }

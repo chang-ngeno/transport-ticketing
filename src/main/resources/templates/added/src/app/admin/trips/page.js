@@ -8,7 +8,7 @@ import { fmt, fmtKES, fmtSeats } from '@/lib/utils';
 import Link from 'next/link';
 import { PlusCircle, TrendingUp, Layers } from 'lucide-react';
 
-const EMPTY = { fromStageId: '', vehicleId: '', toDestination: '', route: '', departureTime: '', totalSeats: '', basePrice: '' };
+const EMPTY = { fromStageId: '', vehicleId: '', toDestination: '', route: '', tripStartTime: '', totalSeats: '', basePrice: '' };
 
 export default function AdminTripsPage() {
   const { is } = useRequireAuth('SUPER_ADMIN', 'TENANT_ADMIN');
@@ -61,7 +61,7 @@ export default function AdminTripsPage() {
   }
 
   useEffect(() => {
-    if (modal) set('departureTime', nowLocalDateTime());
+    if (modal) set('tripStartTime', nowLocalDateTime());
   }, [modal]);
 
   useEffect(() => {
@@ -157,7 +157,7 @@ export default function AdminTripsPage() {
               ) : filtered.map(t => (
                 <tr key={t.id}>
                   <td className="font-mono text-xs text-muted">{t.id}</td>
-                  <td className="font-mono text-xs">{fmt(t.departureTime)}</td>
+                  <td className="font-mono text-xs">{fmt(t.tripStartTime)}</td>
                   <td className="text-xs text-muted">{t.fromStageName || `Stage #${t.fromStageId}`}</td>
                   <td className="font-medium text-sm">{t.toDestination}</td>
                   <td className="text-xs text-muted">{t.route || '—'}</td>
@@ -216,8 +216,8 @@ export default function AdminTripsPage() {
             <Input
               label="Departure Time"
               type="datetime-local"
-              value={form.departureTime}
-              onChange={e => set('departureTime', e.target.value)}
+              value={form.tripStartTime}
+              onChange={e => set('tripStartTime', e.target.value)}
               required
               disabled
             />

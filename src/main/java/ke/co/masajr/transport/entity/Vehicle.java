@@ -28,4 +28,7 @@ public class Vehicle {
 
     @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();
+
+    @Column(length = 20)
+    private String status = "available"; // available, boarding, travelling
 }

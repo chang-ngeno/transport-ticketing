@@ -13,7 +13,7 @@
         <h1>Stages</h1>
       </div>
       <button class="btn btn-primary" onclick="openModal('create-stage-modal')"
-              sec:authorize="hasAnyRole('TENANT_ADMIN','SUPER_ADMIN')">+ New Stage</button>
+              sec:authorize="hasAnyRole('TENANT_ADMIN','SUPER_ADMIN','STAGE_HEAD')">+ New Stage</button>
     </div>
 
     <div id="flash" class="alert" style="display:none;"></div>
@@ -34,7 +34,7 @@
 </main>
 
 <div id="create-stage-modal" class="modal-backdrop"
-     sec:authorize="hasAnyRole('TENANT_ADMIN','SUPER_ADMIN')">
+     sec:authorize="hasAnyRole('TENANT_ADMIN','SUPER_ADMIN','STAGE_HEAD')">
   <div class="modal">
     <div class="modal-header">
       <h2>New Stage</h2>

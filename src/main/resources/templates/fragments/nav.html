@@ -19,7 +19,7 @@
         <a th:href="@{/tickets/book}" sec:authorize="isAuthenticated()">+ Book</a>
         <a th:href="@{/admin/tenants}" sec:authorize="hasRole('SUPER_ADMIN')">Tenants</a>
         <a th:href="@{/admin/users}" sec:authorize="hasRole('SUPER_ADMIN')">Admin Users</a>
-        <a th:href="@{/stages}" sec:authorize="hasAnyRole('TENANT_ADMIN','SUPER_ADMIN')">Stages</a>
+        <a th:href="@{/stages}" sec:authorize="hasAnyRole('TENANT_ADMIN','SUPER_ADMIN','STAGE_HEAD')">Stages</a>
         <a th:href="@{/tenant/users}" sec:authorize="hasAnyRole('TENANT_ADMIN','SUPER_ADMIN')">Users</a>
         <a th:href="@{/vehicles}" sec:authorize="hasAnyRole('STAGE_HEAD','TENANT_ADMIN','SUPER_ADMIN')">Vehicles</a>
       </div>

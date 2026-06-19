@@ -164,7 +164,7 @@ async function loadTrips() {
   if (!Array.isArray(data)) { setTableBody('trips-tbody', '<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--text-muted);">Failed to load trips</td></tr>'); return; }
   if (!data.length) { setTableBody('trips-tbody', '<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--text-muted);">No trips found</td></tr>'); return; }
   setTableBody('trips-tbody', data.map(t => {
-    const dep = t.departureTime ? new Date(t.departureTime).toLocaleString('en-KE', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '–';
+    const dep = t.tripStartTime ? new Date(t.tripStartTime).toLocaleString('en-KE', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '–';
     const seats = `${t.totalSeats - t.bookedSeats}<span style="color:var(--text-muted);font-size:0.75rem;">/${t.totalSeats}</span>`;
     const price = `KES ${Number(t.pricePerSeat).toLocaleString('en-KE', {minimumFractionDigits:2})}`;
     return `<tr>
@@ -189,9 +189,18 @@ async function loadStagesIntoSelect(selectId) {
     stages.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
 }
 
+async function loadVehiclesIntoSelect(selectId) {
+  const vehicles = await api('GET', '/stage/vehicles');
+  const sel = document.getElementById(selectId);
+  if (!sel || !Array.isArray(vehicles)) return;
+  sel.innerHTML = '<option value="">Select vehicle…</option>' +
+    vehicles.map(v => `<option value="${v.id}">${v.registrationNumber} (${v.capacity} seats)</option>`).join('');
+}
+
 const tripForm = document.getElementById('create-trip-form');
 if (tripForm) {
   loadStagesIntoSelect('trip-from-stage');
+  loadVehiclesIntoSelect('trip-vehicle-select');
   tripForm.addEventListener('submit', async e => {
     e.preventDefault();
     const btn = tripForm.querySelector('[type=submit]');
@@ -199,9 +208,10 @@ if (tripForm) {
     try {
       const body = {
         fromStageId:   Number(tripForm.fromStageId.value),
+        vehicleId:     Number(tripForm.vehicleId.value),
         toDestination: tripForm.toDestination.value,
         route:         tripForm.route.value || null,
-        departureTime: tripForm.departureTime.value,
+        tripStartTime: tripForm.tripStartTime.value,
         totalSeats:    Number(tripForm.totalSeats.value),
         basePrice:     Number(tripForm.basePrice.value)
       };
@@ -312,7 +322,8 @@ if (bookForm) {
     try {
       const result = await api('POST', '/tickets/book', {
         tripId: Number(bookForm.tripId.value),
-        phoneNumber: bookForm.phoneNumber.value
+        phoneNumber: bookForm.phoneNumber.value,
+        paymentMethod: bookForm.paymentMethod.value
       });
       if (result?.ticketId) {
         showFlash(`✅ Ticket ${result.ticketId} booked! Check your phone for STK push.`, 'success');
@@ -421,7 +432,6 @@ if (adminUserForm) {
 // tenant/users page
 const tenantUserForm = document.getElementById('create-tenant-user-form');
 if (tenantUserForm) {
-  loadUsers('/tenant/stages'); // load stages into select
   api('GET', '/tenant/stages').then(stages => {
     const sel = document.getElementById('user-stage-select');
     if (sel && Array.isArray(stages)) {
@@ -429,8 +439,6 @@ if (tenantUserForm) {
         stages.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
     }
   });
-  // also load users using the page's data attribute
-  const usersPath = tenantUserForm.dataset.usersPath || '/tenant/users';
   loadTenantUsers();
 
   tenantUserForm.addEventListener('submit', async e => {
@@ -460,9 +468,7 @@ if (tenantUserForm) {
 }
 
 async function loadTenantUsers() {
-  const data = await api('GET', '/tenant/stages'); // stages to confirm auth, then load users via admin
-  // tenant users aren't exposed via REST — use the admin endpoint filtered client-side
-  const users = await api('GET', '/admin/users');
+  const users = await api('GET', '/tenants/users');
   if (!Array.isArray(users)) { setTableBody('users-tbody', '<tr><td colspan="4" style="text-align:center;padding:2rem;color:var(--text-muted);">Failed to load users</td></tr>'); return; }
   if (!users.length) { setTableBody('users-tbody', '<tr><td colspan="4" style="text-align:center;padding:2rem;color:var(--text-muted);">No users found</td></tr>'); return; }
   setTableBody('users-tbody', users.map(u => {

@@ -11,10 +11,10 @@ public interface TripRepository extends JpaRepository<Trip, Long> {
     List<Trip> findByFromStageId(Long stageId);
 
     // Upcoming trips from now ordered soonest first
-    List<Trip> findTop10ByDepartureTimeAfterOrderByDepartureTimeAsc(LocalDateTime now);
-    List<Trip> findTop10ByTenantIdAndDepartureTimeAfterOrderByDepartureTimeAsc(Long tenantId, LocalDateTime now);
+    List<Trip> findTop10ByTripStartTimeAfterOrderByTripStartTimeAsc(LocalDateTime now);
+    List<Trip> findTop10ByTenantIdAndTripStartTimeAfterOrderByTripStartTimeAsc(Long tenantId, LocalDateTime now);
 
     // Count of upcoming trips
-    long countByDepartureTimeAfter(LocalDateTime now);
-    long countByTenantIdAndDepartureTimeAfter(Long tenantId, LocalDateTime now);
+    long countByTripStartTimeAfter(LocalDateTime now);
+    long countByTenantIdAndTripStartTimeAfter(Long tenantId, LocalDateTime now);
 }

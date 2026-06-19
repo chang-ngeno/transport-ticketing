@@ -34,6 +34,9 @@ public class StageService {
 
     public List<Stage> listStages(Long tenantId) {
         log.debug("Listing stages tenantId={}", tenantId);
+        if (tenantId == null) {
+            return stageRepository.findAll();
+        }
         return stageRepository.findByTenantId(tenantId);
     }
 }

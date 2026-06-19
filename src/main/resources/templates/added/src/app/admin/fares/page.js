@@ -59,7 +59,7 @@ function FaresContent() {
   const selectedTrip  = trips.find(t => String(t.id) === String(tripId));
   const tripOpts = trips.map(t => ({
     value: t.id,
-    label: `${fmt(t.departureTime, 'dd MMM HH:mm')} → ${t.toDestination}`,
+    label: `${fmt(t.tripStartTime, 'dd MMM HH:mm')} → ${t.toDestination}`,
   }));
 
   // Timeline: sort fares by effectiveFrom
@@ -81,7 +81,7 @@ function FaresContent() {
         <Info size={15} className="text-amber mt-0.5 flex-shrink-0"/>
         <p className="text-muted">
           Fare windows override the trip's base price for a specific time range.
-          The system picks the window whose <span className="font-mono text-amber text-xs">effectiveFrom ≤ departureTime &lt; effectiveTo</span>.
+          The system picks the window whose <span className="font-mono text-amber text-xs">effectiveFrom ≤ tripStartTime &lt; effectiveTo</span>.
           Leave <em>Effective To</em> blank for an open-ended fare.
         </p>
       </div>
@@ -99,7 +99,7 @@ function FaresContent() {
           {selectedTrip && (
             <div className="mt-3 flex flex-wrap gap-4 font-mono text-xs text-muted">
               <span>Base price: <span className="text-amber">{fmtKES(selectedTrip.pricePerSeat)}</span></span>
-              <span>Departs: <span className="text-text">{fmt(selectedTrip.departureTime)}</span></span>
+              <span>Departs: <span className="text-text">{fmt(selectedTrip.tripStartTime)}</span></span>
               <span>Seats: <span className="text-text">{selectedTrip.totalSeats - selectedTrip.bookedSeats} / {selectedTrip.totalSeats} free</span></span>
             </div>
           )}

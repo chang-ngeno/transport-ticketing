@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import ke.co.masajr.transport.dto.*;
 import ke.co.masajr.transport.entity.*;
 import ke.co.masajr.transport.service.TenantService;
+import ke.co.masajr.transport.service.TicketBookingService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -19,9 +20,11 @@ import java.util.Map;
 public class TenantController {
 
     private final TenantService tenantService;
+    private final TicketBookingService bookingService;
 
-    public TenantController(TenantService tenantService) {
+    public TenantController(TenantService tenantService, TicketBookingService bookingService) {
         this.tenantService = tenantService;
+        this.bookingService = bookingService;
     }
 
     // ── Tenants (SUPER_ADMIN only) ────────────────────────────────────────────
@@ -102,7 +105,7 @@ public class TenantController {
 
     // ── Stages ────────────────────────────────────────────────────────────────
 
-    @PreAuthorize("hasAnyRole('TENANT_ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('TENANT_ADMIN','SUPER_ADMIN','STAGE_HEAD')")
     @PostMapping("/tenant/stages")
     public ResponseEntity<Stage> createStage(@Valid @RequestBody CreateStageRequest req,
                                              @AuthenticationPrincipal AppUser caller) {
@@ -126,14 +129,15 @@ public class TenantController {
 
     // ── Trips ─────────────────────────────────────────────────────────────────
 
-    @PreAuthorize("hasAnyRole('TENANT_ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('TENANT_ADMIN','SUPER_ADMIN','STAGE_HEAD')")
     @PostMapping("/tenant/trips")
     public ResponseEntity<Trip> createTrip(@Valid @RequestBody CreateTripRequest req,
                                            @AuthenticationPrincipal AppUser caller) {
         Long tenantId = caller.getRole() == Role.SUPER_ADMIN ? req.tenantId() : caller.getTenantId();
+        Long restrictedStageId = (caller.getRole() == Role.STAGE_HEAD || caller.getRole() == Role.STAGE_ATTENDANT) ? caller.getStageId() : null;
         return ResponseEntity.ok(tenantService.createTrip(
             tenantId, req.fromStageId(), req.toStageId(), req.vehicleId(), req.toDestination(),
-            req.route(), req.departureTime(), req.totalSeats(), req.basePrice()));
+            req.route(), req.tripStartTime(), req.totalSeats(), req.basePrice(), restrictedStageId));
     }
 
     @PreAuthorize("hasAnyRole('TENANT_ADMIN','SUPER_ADMIN','STAGE_HEAD','STAGE_ATTENDANT')")
@@ -173,9 +177,14 @@ public class TenantController {
     @PreAuthorize("hasAnyRole('TENANT_ADMIN','SUPER_ADMIN','STAGE_HEAD','STAGE_ATTENDANT')")
     @GetMapping("/stage/vehicles")
     public ResponseEntity<List<Vehicle>> listVehicles(@AuthenticationPrincipal AppUser caller) {
-        List<Vehicle> vehicles = caller.getStageId() != null
-                ? tenantService.listVehicles(caller.getStageId())
-                : tenantService.listAllVehicles();
+        List<Vehicle> vehicles;
+        if (caller.getRole() == Role.SUPER_ADMIN) {
+            vehicles = tenantService.listAllVehicles();
+        } else if (caller.getStageId() != null) {
+            vehicles = tenantService.listVehicles(caller.getStageId());
+        } else {
+            vehicles = tenantService.searchVehicles(caller.getTenantId(), null);
+        }
         return ResponseEntity.ok(vehicles);
     }
 
@@ -186,5 +195,23 @@ public class TenantController {
         Boolean active = body.get("active");
         if (active == null) return ResponseEntity.badRequest().build();
         return ResponseEntity.ok(tenantService.toggleVehicle(id, active));
+    }
+
+    @PreAuthorize("hasAnyRole('TENANT_ADMIN','SUPER_ADMIN','STAGE_HEAD')")
+    @PostMapping("/tenant/trips/{id}/start")
+    public ResponseEntity<Trip> startTrip(@PathVariable Long id) {
+        return ResponseEntity.ok(tenantService.startTrip(id));
+    }
+
+    @PreAuthorize("hasAnyRole('TENANT_ADMIN','SUPER_ADMIN','STAGE_HEAD')")
+    @PostMapping("/tenant/trips/{id}/end")
+    public ResponseEntity<Trip> endTrip(@PathVariable Long id) {
+        return ResponseEntity.ok(tenantService.endTrip(id));
+    }
+
+    @PreAuthorize("hasAnyRole('TENANT_ADMIN','SUPER_ADMIN','STAGE_HEAD','STAGE_ATTENDANT')")
+    @GetMapping("/tenant/trips/{tripId}/manifest")
+    public ResponseEntity<ke.co.masajr.transport.dto.TripManifestResponse> getTripManifest(@PathVariable Long tripId) {
+        return ResponseEntity.ok(bookingService.getTripManifest(tripId));
     }
 }

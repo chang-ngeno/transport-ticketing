@@ -41,6 +41,7 @@ public class VehicleService {
         vehicle.setRegistrationNumber(registrationNumber);
         vehicle.setCapacity(capacity);
         vehicle.setIsActive(true);
+        vehicle.setStatus("available");
         
         log.debug("Vehicle before save: tenantId={}", vehicle.getTenantId());
         
@@ -63,6 +64,10 @@ public class VehicleService {
 
     public List<Vehicle> searchByTenant(Long tenantId, String query) {
         log.debug("Searching vehicles tenantId={} query={}", tenantId, query);
+        if (tenantId == null) {
+            if (query == null || query.isBlank()) return vehicleRepository.findAll();
+            return vehicleRepository.findByRegistrationNumberContainingIgnoreCase(query);
+        }
         if (query == null || query.isBlank()) return vehicleRepository.findByTenantId(tenantId);
         return vehicleRepository.findByTenantIdAndRegistrationNumberContainingIgnoreCase(tenantId, query);
     }

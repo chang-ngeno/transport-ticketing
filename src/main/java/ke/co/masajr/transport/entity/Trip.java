@@ -30,10 +30,10 @@ public class Trip {
     @Column(length = 200)
     private String route;
 
-    @Column(name = "departure_time", nullable = false)
-    private LocalDateTime departureTime;
+    @Column(name = "trip_start_time", nullable = false)
+    private LocalDateTime tripStartTime;
 
-    @Column(name = "total_seats", nullable = false)
+    @Column(nullable = false)
     private Integer totalSeats;
 
     @Column(name = "booked_seats")
@@ -41,4 +41,7 @@ public class Trip {
 
     @Column(name = "price_per_seat", nullable = false, precision = 10, scale = 2)
     private BigDecimal pricePerSeat;
+
+    @Column(length = 20)
+    private String status = "BOARDING"; // BOARDING, TRAVELLING, ENDED
 }

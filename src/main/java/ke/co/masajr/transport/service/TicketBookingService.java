@@ -1,14 +1,10 @@
 package ke.co.masajr.transport.service;
 
-import ke.co.masajr.transport.entity.BookingEntity;
+import ke.co.masajr.transport.dto.ReceiptResponse;
+import ke.co.masajr.transport.dto.TripManifestResponse;
+import ke.co.masajr.transport.entity.*;
 import ke.co.masajr.transport.entity.BookingEntity.PaymentMethod;
-import ke.co.masajr.transport.entity.Fare;
-import ke.co.masajr.transport.entity.Trip;
-import ke.co.masajr.transport.entity.Vehicle;
-import ke.co.masajr.transport.repository.BookingRepository;
-import ke.co.masajr.transport.repository.FareRepository;
-import ke.co.masajr.transport.repository.TripRepository;
-import ke.co.masajr.transport.repository.VehicleRepository;
+import ke.co.masajr.transport.repository.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,17 +26,6 @@ import java.util.concurrent.StructuredTaskScope;
 
 /**
  * Core ticket booking service.
- *
- * Implements three concurrency strategies from the Engineering Guide:
- *
- *  1. processBatchBookings()     — StructuredTaskScope.ShutdownOnFailure
- *                                  "all-or-nothing" atomic batch (Java 21)
- *  2. processWithVirtualThreads() — Virtual thread executor + Semaphore throttle
- *                                   for high-throughput, rate-limited batches (Java 21)
- *  3. processStrictBatch()        — Strict StructuredTaskScope: first failure
- *                                   cancels all sibling tasks immediately (Java 21)
- *
- * All varargs methods guard against: null array, null elements (Objects::nonNull).
  */
 @Service
 public class TicketBookingService {
@@ -49,7 +34,6 @@ public class TicketBookingService {
 
     /**
      * Semaphore: max 50 concurrent M-PESA STK calls at any time.
-     * Mirrors the Banking API rate-limit backpressure pattern from §3 of the guide.
      */
     private final Semaphore mpesaRateLimit = new Semaphore(50);
 
@@ -57,6 +41,8 @@ public class TicketBookingService {
     private final FareRepository fareRepository;
     private final BookingRepository bookingRepository;
     private final VehicleRepository vehicleRepository;
+    private final StageRepository stageRepository;
+    private final TenantRepository tenantRepository;
     private final MpesaService mpesaService;
     private final SmsService smsService;
     private TicketBookingService self;
@@ -65,12 +51,16 @@ public class TicketBookingService {
                                 FareRepository fareRepository,
                                 BookingRepository bookingRepository,
                                 VehicleRepository vehicleRepository,
+                                StageRepository stageRepository,
+                                TenantRepository tenantRepository,
                                 MpesaService mpesaService,
                                 SmsService smsService) {
         this.tripRepository = tripRepository;
         this.fareRepository = fareRepository;
         this.bookingRepository = bookingRepository;
         this.vehicleRepository = vehicleRepository;
+        this.stageRepository = stageRepository;
+        this.tenantRepository = tenantRepository;
         this.mpesaService = mpesaService;
         this.smsService = smsService;
         this.self = this;
@@ -85,11 +75,6 @@ public class TicketBookingService {
     // Dynamic pricing
     // ─────────────────────────────────────────────────────────────────────────
 
-    /**
-     * Resolves the effective price for a trip at its departure time.
-     * Picks the fare window whose [effectiveFrom, effectiveTo) bracket covers
-     * the departure time. Falls back to the trip's base price if none match.
-     */
     public BigDecimal resolvePrice(Long tripId, LocalDateTime at) {
         return fareRepository.findActiveFare(tripId, at)
                 .map(Fare::getPricePerSeat)
@@ -102,33 +87,38 @@ public class TicketBookingService {
     // Single booking
     // ─────────────────────────────────────────────────────────────────────────
 
-    /**
-     * Books a single ticket.
-     * STK push + SMS run in parallel via StructuredTaskScope on virtual threads.
-     */
     @Transactional
     public BookingEntity bookTicket(Long tenantId, Long tripId, String phoneNumber) {
-        return bookTicketInternal(tenantId, tripId, phoneNumber, PaymentMethod.MPESA.name());
+        return bookTicketInternal(tenantId, tripId, phoneNumber, PaymentMethod.MPESA.name(), 1);
     }
 
     @Transactional
     public BookingEntity bookTicket(Long tenantId, Long tripId, String phoneNumber, String paymentMethod) {
-        return bookTicketInternal(tenantId, tripId, phoneNumber, paymentMethod);
+        return bookTicketInternal(tenantId, tripId, phoneNumber, paymentMethod, 1);
     }
 
-    private BookingEntity bookTicketInternal(Long tenantId, Long tripId, String phoneNumber, String paymentMethod) {
+    @Transactional
+    public BookingEntity bookTicket(Long tenantId, Long tripId, String phoneNumber, String paymentMethod, int passengerCount) {
+        return bookTicketInternal(tenantId, tripId, phoneNumber, paymentMethod, passengerCount);
+    }
+
+    private BookingEntity bookTicketInternal(Long tenantId, Long tripId, String phoneNumber, String paymentMethod, int passengerCount) {
+        if (passengerCount <= 0) {
+            passengerCount = 1;
+        }
+
         Trip trip = tripRepository.findById(tripId)
                 .orElseThrow(() -> new IllegalArgumentException("Trip not found: " + tripId));
 
-        if (!trip.getTenantId().equals(tenantId)) {
+        if (tenantId != null && !trip.getTenantId().equals(tenantId)) {
             throw new IllegalArgumentException("Trip does not belong to tenant");
         }
 
         Vehicle vehicle = vehicleRepository.findById(trip.getVehicleId())
                 .orElseThrow(() -> new IllegalArgumentException("Vehicle not found for trip: " + tripId));
 
-        if (trip.getBookedSeats() >= trip.getTotalSeats()) {
-            throw new IllegalStateException("Vehicle " + vehicle.getRegistrationNumber() + " is full");
+        if (trip.getBookedSeats() + passengerCount > trip.getTotalSeats()) {
+            throw new IllegalStateException("Vehicle " + vehicle.getRegistrationNumber() + " does not have enough seats available");
         }
 
         PaymentMethod method = PaymentMethod.valueOf(paymentMethod.toUpperCase());
@@ -136,37 +126,46 @@ public class TicketBookingService {
             throw new IllegalArgumentException("Mobile number is required for M-PESA bookings");
         }
 
-        BigDecimal price = resolvePrice(tripId, LocalDateTime.now());
-        String ticketId = "TKT-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        BigDecimal unitPrice = resolvePrice(tripId, LocalDateTime.now());
+        BigDecimal totalPrice = unitPrice.multiply(BigDecimal.valueOf(passengerCount));
+
+        // Generate prefix depending on payment mode
+        String prefix = method == PaymentMethod.CASH ? "CSH-" : "MPA-";
+        String ticketId = prefix + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
 
         BookingEntity booking = new BookingEntity();
-        booking.setTenantId(tenantId);
+        booking.setTenantId(trip.getTenantId());
         booking.setTripId(tripId);
         booking.setTicketId(ticketId);
         booking.setPhoneNumber(phoneNumber == null ? "" : phoneNumber);
         booking.setPaymentMethod(method);
-        booking.setAmount(price);
-        booking.setPricePaid(price);
+        booking.setAmount(totalPrice);
+        booking.setPricePaid(totalPrice);
+        booking.setPassengerCount(passengerCount);
         booking.setStatus(method == PaymentMethod.CASH ? "PAID" : "PENDING");
         bookingRepository.save(booking);
 
-        trip.setBookedSeats(trip.getBookedSeats() + 1);
+        trip.setBookedSeats(trip.getBookedSeats() + passengerCount);
         tripRepository.save(trip);
 
         if (method == PaymentMethod.CASH) {
             if (phoneNumber != null && !phoneNumber.isBlank()) {
                 smsService.sendSms(phoneNumber, String.format(
-                        "Your ticket %s has been booked and paid in cash. Enjoy your trip!", ticketId));
+                        "Your ticket %s for %d passenger(s) has been booked and paid in cash. Enjoy your trip!",
+                        ticketId, passengerCount));
             }
         } else {
+            // Capture effectively final variables for lambda
+            final int finalPassengerCount = passengerCount;
+            final BigDecimal finalTotalPrice = totalPrice;
             try (var scope = new StructuredTaskScope.ShutdownOnFailure()) {
                 var stkTask = scope.fork(() ->
-                        mpesaService.initiateStk(tenantId, phoneNumber, price.doubleValue(), ticketId));
+                        mpesaService.initiateStk(trip.getTenantId(), phoneNumber, finalTotalPrice.doubleValue(), ticketId));
 
                 scope.fork(() -> {
                     smsService.sendSms(phoneNumber, String.format(
-                            "Ticket %s booked. Amount: KES %.2f. Awaiting M-PESA payment.",
-                            ticketId, price));
+                            "Ticket %s booked for %d passenger(s). Amount: KES %.2f. Awaiting M-PESA payment.",
+                            ticketId, finalPassengerCount, finalTotalPrice));
                     return null;
                 });
 
@@ -175,7 +174,6 @@ public class TicketBookingService {
                 bookingRepository.save(booking);
             } catch (Exception e) {
                 log.error("STK/SMS failed for ticket {}: {}", ticketId, e.getMessage());
-                // Booking stays PENDING – M-PESA callback will update status
             }
         }
 
@@ -183,7 +181,7 @@ public class TicketBookingService {
     }
 
     public List<BookingEntity> processBatchBookingsWithDefaultPayment(Long tenantId, Long tripId,
-                                                                         String... phoneNumbers) throws Exception {
+                                                                          String... phoneNumbers) throws Exception {
         return processBatchBookings(tenantId, tripId, PaymentMethod.MPESA.name(), phoneNumbers);
     }
 
@@ -197,7 +195,7 @@ public class TicketBookingService {
             @SuppressWarnings("unchecked")
             List<StructuredTaskScope.Subtask<BookingEntity>> tasks = Arrays.stream(phoneNumbers)
                     .filter(Objects::nonNull)
-                    .map(phone -> (StructuredTaskScope.Subtask<BookingEntity>) scope.fork(() -> self.bookTicket(tenantId, tripId, phone, paymentMethod)))
+                    .map(phone -> (StructuredTaskScope.Subtask<BookingEntity>) scope.fork(() -> self.bookTicket(tenantId, tripId, phone, paymentMethod, 1)))
                     .toList();
 
             scope.join();
@@ -224,7 +222,7 @@ public class TicketBookingService {
             Arrays.stream(phoneNumbers)
                     .filter(Objects::nonNull)
                     .forEach(phone -> scope.fork(() -> {
-                        self.bookTicket(tenantId, tripId, phone, paymentMethod);
+                        self.bookTicket(tenantId, tripId, phone, paymentMethod, 1);
                         return null;
                     }));
             scope.join();
@@ -245,7 +243,7 @@ public class TicketBookingService {
                     .forEach(phone -> executor.submit(() -> {
                         mpesaRateLimit.acquire();
                         try {
-                            self.bookTicket(tenantId, tripId, phone, paymentMethod);
+                            self.bookTicket(tenantId, tripId, phone, paymentMethod, 1);
                         } finally {
                             mpesaRateLimit.release();
                         }
@@ -272,15 +270,101 @@ public class TicketBookingService {
                 smsService.sendSms(booking.getPhoneNumber(),
                         String.format("❌ Payment failed for ticket %s. Please try again.",
                                 booking.getTicketId()));
-                // Release the seat
+                // Release the seats
                 tripRepository.findById(booking.getTripId()).ifPresent(trip -> {
-                    trip.setBookedSeats(Math.max(0, trip.getBookedSeats() - 1));
+                    trip.setBookedSeats(Math.max(0, trip.getBookedSeats() - booking.getPassengerCount()));
                     tripRepository.save(trip);
                 });
             }
             log.info("Booking {} → {} for checkout {}",
                     booking.getTicketId(), booking.getStatus(), checkoutRequestId);
         }, () -> log.warn("No booking for CheckoutRequestID: {}", checkoutRequestId));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Reports
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public ReceiptResponse getReceipt(String ticketId) {
+        BookingEntity booking = bookingRepository.findByTicketId(ticketId)
+                .orElseThrow(() -> new IllegalArgumentException("Booking not found: " + ticketId));
+        Trip trip = tripRepository.findById(booking.getTripId())
+                .orElseThrow(() -> new IllegalArgumentException("Trip not found: " + booking.getTripId()));
+        Vehicle vehicle = vehicleRepository.findById(trip.getVehicleId()).orElse(null);
+
+        String fromStageName = "Unknown";
+        if (trip.getFromStageId() != null) {
+            fromStageName = stageRepository.findById(trip.getFromStageId()).map(Stage::getName).orElse("Unknown");
+        }
+
+        String toStageName = "Unknown";
+        if (trip.getToStageId() != null) {
+            toStageName = stageRepository.findById(trip.getToStageId()).map(Stage::getName).orElse("Unknown");
+        }
+
+        String tenantName = "Unknown";
+        if (trip.getTenantId() != null) {
+            tenantName = tenantRepository.findById(trip.getTenantId()).map(Tenant::getName).orElse("Unknown");
+        }
+
+        return new ReceiptResponse(
+            booking.getTicketId(),
+            booking.getPhoneNumber(),
+            booking.getPaymentMethod().name(),
+            booking.getAmount(),
+            booking.getStatus(),
+            booking.getCreatedAt(),
+            booking.getPassengerCount(),
+            trip.getId(),
+            fromStageName,
+            toStageName,
+            trip.getToDestination(),
+            trip.getRoute(),
+            trip.getTripStartTime(),
+            vehicle != null ? vehicle.getRegistrationNumber() : "N/A",
+            tenantName
+        );
+    }
+
+    public TripManifestResponse getTripManifest(Long tripId) {
+        Trip trip = tripRepository.findById(tripId)
+                .orElseThrow(() -> new IllegalArgumentException("Trip not found: " + tripId));
+        Vehicle vehicle = vehicleRepository.findById(trip.getVehicleId()).orElse(null);
+
+        String fromStageName = "Unknown";
+        if (trip.getFromStageId() != null) {
+            fromStageName = stageRepository.findById(trip.getFromStageId()).map(Stage::getName).orElse("Unknown");
+        }
+
+        List<BookingEntity> bookings = bookingRepository.findByTripId(tripId);
+        BigDecimal totalAmount = bookings.stream()
+                .filter(b -> "PAID".equalsIgnoreCase(b.getStatus()))
+                .map(BookingEntity::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        List<TripManifestResponse.PassengerManifestItem> passengerItems = bookings.stream()
+                .map(b -> new TripManifestResponse.PassengerManifestItem(
+                        b.getTicketId(),
+                        b.getPhoneNumber(),
+                        b.getPassengerCount(),
+                        b.getAmount(),
+                        b.getStatus(),
+                        b.getPaymentMethod().name()
+                ))
+                .toList();
+
+        return new TripManifestResponse(
+            trip.getId(),
+            vehicle != null ? vehicle.getRegistrationNumber() : "N/A",
+            trip.getTotalSeats(),
+            trip.getBookedSeats(),
+            trip.getPricePerSeat(),
+            totalAmount,
+            fromStageName,
+            trip.getToDestination(),
+            trip.getTripStartTime(),
+            passengerItems
+        );
     }
 
     // ─────────────────────────────────────────────────────────────────────────

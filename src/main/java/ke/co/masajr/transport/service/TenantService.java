@@ -110,9 +110,26 @@ public class TenantService {
 
     @Transactional
     public Trip createTrip(Long tenantId, Long fromStageId, Long toStageId, Long vehicleId, String toDestination,
-                           String route, java.time.LocalDateTime departureTime,
+                           String route, java.time.LocalDateTime tripStartTime,
                            int totalSeats, java.math.BigDecimal basePrice) {
-        return tripService.createTrip(tenantId, fromStageId, toStageId, vehicleId, toDestination, route, departureTime, totalSeats, basePrice);
+        return tripService.createTrip(tenantId, fromStageId, toStageId, vehicleId, toDestination, route, tripStartTime, totalSeats, basePrice, null);
+    }
+
+    @Transactional
+    public Trip createTrip(Long tenantId, Long fromStageId, Long toStageId, Long vehicleId, String toDestination,
+                           String route, java.time.LocalDateTime tripStartTime,
+                           int totalSeats, java.math.BigDecimal basePrice, Long restrictedStageId) {
+        return tripService.createTrip(tenantId, fromStageId, toStageId, vehicleId, toDestination, route, tripStartTime, totalSeats, basePrice, restrictedStageId);
+    }
+
+    @Transactional
+    public Trip startTrip(Long tripId) {
+        return tripService.startTrip(tripId);
+    }
+
+    @Transactional
+    public Trip endTrip(Long tripId) {
+        return tripService.endTrip(tripId);
     }
 
     public List<Trip> listTrips(Long tenantId) {

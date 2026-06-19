@@ -80,8 +80,8 @@ public class TenantWebController {
                              @RequestParam(required = false) Long vehicleId,
                              @RequestParam String toDestination,
                              @RequestParam(required = false) String route,
-                             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm") LocalDateTime departureTime,
-                             @RequestParam int totalSeats,
+                             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm") LocalDateTime tripStartTime,
+                             @RequestParam(required = false) Integer totalSeats,
                              @RequestParam BigDecimal basePrice,
                              @RequestParam(required = false) Long tenantId,
                              @AuthenticationPrincipal AppUser caller,
@@ -89,8 +89,10 @@ public class TenantWebController {
         try {
             Long tid = caller.getTenantId() != null ? caller.getTenantId() : tenantId;
             if (tid == null) throw new IllegalArgumentException("Tenant is required.");
+            Long restrictedStageId = (caller.getRole() == Role.STAGE_HEAD || caller.getRole() == Role.STAGE_ATTENDANT) ? caller.getStageId() : null;
+            int seats = totalSeats != null ? totalSeats : 0;
             tenantService.createTrip(tid, fromStageId, toStageId, vehicleId, toDestination,
-                    route, departureTime, totalSeats, basePrice);
+                    route, tripStartTime, seats, basePrice, restrictedStageId);
             ra.addFlashAttribute("success", "Trip to '" + toDestination + "' created.");
         } catch (Exception e) {
             ra.addFlashAttribute("error", e.getMessage());

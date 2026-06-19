@@ -36,9 +36,11 @@ public class SecurityConfig {
                 .requestMatchers("/.well-known/**").permitAll()
                 // UI routes access control
                 .requestMatchers("/admin/**").hasRole("SUPER_ADMIN")
-                .requestMatchers("/tenant/**").hasAnyRole("TENANT_ADMIN", "SUPER_ADMIN")
+                .requestMatchers("/tenant/users/**").hasAnyRole("TENANT_ADMIN", "SUPER_ADMIN")
+                .requestMatchers("/tenant/**").hasAnyRole("TENANT_ADMIN", "SUPER_ADMIN", "STAGE_HEAD")
                 .requestMatchers("/api/admin/tenants/**").hasRole("SUPER_ADMIN")
-                .requestMatchers("/api/tenant/**").hasAnyRole("TENANT_ADMIN", "SUPER_ADMIN")
+                .requestMatchers("/api/tenant/users/**").hasAnyRole("TENANT_ADMIN", "SUPER_ADMIN")
+                .requestMatchers("/api/tenant/**").hasAnyRole("TENANT_ADMIN", "SUPER_ADMIN", "STAGE_HEAD", "STAGE_ATTENDANT")
                 .requestMatchers("/api/stage/**").hasAnyRole("STAGE_HEAD", "TENANT_ADMIN", "SUPER_ADMIN")
                 .anyRequest().authenticated()
             )

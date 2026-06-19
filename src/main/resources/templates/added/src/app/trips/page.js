@@ -10,7 +10,7 @@ import { PlusCircle, Bus, ArrowRight, TrendingUp } from 'lucide-react';
 
 const EMPTY_FORM = {
   fromStageId: '', vehicleId: '', toDestination: '', route: '',
-  departureTime: '', totalSeats: '', basePrice: '',
+  tripStartTime: '', totalSeats: '', basePrice: '',
 };
 
 export default function TripsPage() {
@@ -64,7 +64,7 @@ export default function TripsPage() {
 
   useEffect(() => {
     if (modal) {
-      set('departureTime', nowLocalDateTime());
+      set('tripStartTime', nowLocalDateTime());
     }
   }, [modal]);
 
@@ -132,7 +132,7 @@ export default function TripsPage() {
                 <tr><td colSpan={7}><EmptyState message="No trips scheduled yet"/></td></tr>
               ) : trips.map(t => (
                 <tr key={t.id}>
-                  <td className="font-mono text-xs">{fmt(t.departureTime)}</td>
+                  <td className="font-mono text-xs">{fmt(t.tripStartTime)}</td>
                   <td className="text-muted text-xs">{t.fromStageName || '—'}</td>
                   <td className="font-medium">{t.toDestination}</td>
                   <td className="text-muted text-xs">{t.route || '—'}</td>
@@ -203,8 +203,8 @@ export default function TripsPage() {
             <Input
               label="Departure Time"
               type="datetime-local"
-              value={form.departureTime}
-              onChange={e => set('departureTime', e.target.value)}
+              value={form.tripStartTime}
+              onChange={e => set('tripStartTime', e.target.value)}
               required
               disabled
             />

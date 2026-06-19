@@ -34,11 +34,13 @@ public class TicketController {
             throw new IllegalArgumentException("Mobile number is required for M-PESA bookings");
         }
 
+        int count = request.passengerCount() != null ? request.passengerCount() : 1;
         BookingEntity booking = bookingService.bookTicket(
                 caller.getTenantId(),
                 request.tripId(),
                 request.phoneNumber(),
-                request.paymentMethod()
+                request.paymentMethod(),
+                count
         );
         return ResponseEntity.ok(booking);
     }
@@ -71,6 +73,12 @@ public class TicketController {
         return bookingService.findByTicketId(ticketId)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/{ticketId}/receipt")
+    public ResponseEntity<?> getTicketReceipt(@PathVariable String ticketId) {
+        return ResponseEntity.ok(bookingService.getReceipt(ticketId));
     }
 
     @PreAuthorize("hasAnyRole('TENANT_ADMIN','SUPER_ADMIN')")

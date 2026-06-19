@@ -108,7 +108,7 @@ src/main/resources/
 | POST | `/api/mpesa/callback` | Safaricom STK callback (public) |
 
 ## Dynamic Pricing Logic
-Pricing resolves the active `Fare` whose window covers the trip's `departureTime`.  
+Pricing resolves the active `Fare` whose window covers the trip's `tripStartTime`.  
 Falls back to the trip's `basePrice` if no fare window matches.
 
 ```

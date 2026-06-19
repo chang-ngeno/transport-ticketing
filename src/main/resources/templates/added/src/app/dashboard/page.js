@@ -172,10 +172,10 @@ export default function DashboardPage() {
               <div key={t.id} className="flex items-center gap-3 px-5 py-3.5 hover:bg-panel/50 transition-colors">
                 <div className="flex-shrink-0 text-center min-w-[52px]">
                   <p className="font-mono text-amber font-semibold text-sm leading-none">
-                    {fmt(t.departureTime, 'HH:mm')}
+                    {fmt(t.tripStartTime, 'HH:mm')}
                   </p>
                   <p className="font-mono text-[10px] text-muted mt-0.5">
-                    {fmt(t.departureTime, 'dd MMM')}
+                    {fmt(t.tripStartTime, 'dd MMM')}
                   </p>
                 </div>
                 <div className="flex-1 min-w-0">

@@ -59,7 +59,7 @@ class TicketBookingServiceTest {
         mockTrip.setTotalSeats(14);
         mockTrip.setBookedSeats(0);
         mockTrip.setPricePerSeat(new BigDecimal("150.00"));
-        mockTrip.setDepartureTime(LocalDateTime.now().plusHours(2));
+        mockTrip.setTripStartTime(LocalDateTime.now().plusHours(2));
     }
 
     // ─────────────────────────────────────────────────────────────────────────

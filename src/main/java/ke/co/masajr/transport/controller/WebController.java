@@ -76,13 +76,13 @@ public class WebController {
             paid        = bookingRepository.countByTenantIdAndStatus(tenantId, "PAID");
             pending     = bookingRepository.countByTenantIdAndStatus(tenantId, "PENDING");
             failed      = bookingRepository.countByTenantIdAndStatus(tenantId, "FAILED");
-            activeTrips = tripRepository.countByTenantIdAndDepartureTimeAfter(tenantId, now);
+            activeTrips = tripRepository.countByTenantIdAndTripStartTimeAfter(tenantId, now);
         } else {
             total       = bookingRepository.count();
             paid        = bookingRepository.countByStatus("PAID");
             pending     = bookingRepository.countByStatus("PENDING");
             failed      = bookingRepository.countByStatus("FAILED");
-            activeTrips = tripRepository.countByDepartureTimeAfter(now);
+            activeTrips = tripRepository.countByTripStartTimeAfter(now);
         }
 
         long activeVehicles = stageId != null
@@ -98,8 +98,8 @@ public class WebController {
         stats.put("activeVehicles", activeVehicles);
 
         List<Trip> recentTrips = tenantId != null
-                ? tripRepository.findTop10ByTenantIdAndDepartureTimeAfterOrderByDepartureTimeAsc(tenantId, now)
-                : tripRepository.findTop10ByDepartureTimeAfterOrderByDepartureTimeAsc(now);
+                ? tripRepository.findTop10ByTenantIdAndTripStartTimeAfterOrderByTripStartTimeAsc(tenantId, now)
+                : tripRepository.findTop10ByTripStartTimeAfterOrderByTripStartTimeAsc(now);
 
         List<BookingEntity> recentBookings = tenantId != null
                 ? bookingRepository.findTop10ByTenantIdOrderByCreatedAtDesc(tenantId)

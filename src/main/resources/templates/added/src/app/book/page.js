@@ -133,7 +133,7 @@ function BookForm() {
     const vehicleLabel = tripVehicle ? ` [${tripVehicle.registrationNumber}]` : '';
     return {
       value: t.id,
-      label: `${fmt(t.departureTime, 'dd MMM HH:mm')} → ${t.toDestination}${vehicleLabel} | ${fmtKES(t.pricePerSeat)} (${t.totalSeats - t.bookedSeats} seats)`,
+      label: `${fmt(t.tripStartTime, 'dd MMM HH:mm')} → ${t.toDestination}${vehicleLabel} | ${fmtKES(t.pricePerSeat)} (${t.totalSeats - t.bookedSeats} seats)`,
     };
   });
 
@@ -269,7 +269,7 @@ function BookForm() {
                 {selectedTrip && (
                   <div className="grid grid-cols-3 gap-3 mb-4">
                     <Input label="Vehicle" value={selectedVehicle?.registrationNumber ?? `#${selectedTrip.vehicleId}`} disabled />
-                    <Input label="Departure Time" value={fmt(selectedTrip.departureTime, 'dd MMM yyyy HH:mm')} disabled />
+                    <Input label="Departure Time" value={fmt(selectedTrip.tripStartTime, 'dd MMM yyyy HH:mm')} disabled />
                     <Input label="Total Seats" value={String(selectedTrip.totalSeats)} disabled />
                   </div>
                 )}
